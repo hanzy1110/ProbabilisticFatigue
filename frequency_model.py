@@ -1,98 +1,105 @@
 #%%
 import pymc3 as pm
 import arviz as az
-import pandas as pd 
+import pandas as pd
 import numpy as np
-
+import seaborn as sns
 from scipy import stats
 
 from typing import Dict
 import theano.tensor as tt
 import matplotlib.pyplot as plt
 
-def mixture_density(w, alpha, beta, x):
-    logp = tt.log(w) + pm.Weibull.dist(alpha=alpha,beta=beta).logp(x)
-    return tt.sum(tt.exp(logp))
-
-# def mixture_density(alpha, beta, x, scalling=1):
-#     logp = pm.Weibull.dist(alpha,beta).logp(x)
-#     return scalling * tt.exp(logp)
+def hist_sample(hist, n):
+    """Genertae histogram sample
+    Args:
+        hist (array): hist[0]: frecuencies/probs of X values, hist[1]: X values
+        n ([type]): number of samples
+    Returns:
+        [list]: list with samples
+    """
+    return np.random.choice(hist[1], size=n, p=hist[0]/sum(hist[0]))
 
 def equivalent_fatigue(freq, data, amplitudes):
-    cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.int64)[0][1:]
+    cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.float64)[0][1:]
     basquin_stress = amplitudes**b
     return np.dot(cycles, basquin_stress)
 
 def get_freq_density(freq, data):
-    cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.int64)
+    cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.float64)
     return cycles.sum()
-    
-data = pd.read_csv('cleansed_csvs/5BBOL2-137_VANO 136_OPGW_807625_19_02_2020.csv')
-data.set_index(data['Frequency [Hz]'])
+
+data = pd.read_csv('800356.csv')
+# data['Frequency [Hz]'] = np.array(data['Frequency [Hz]'].values, dtype=np.int64)
+data.set_index(data['Frequency [Hz]'], inplace=True)
 data.drop(data.index.values[-1], inplace=True)
 
 N_eq = 1e7
 b = -0.1
 #%%
-frequency = np.array(data['Frequency [Hz]'].values)
+freq_prev = np.array(data['Frequency [Hz]'].values)
 amplitudes = np.array(list(data.columns)[1:], np.float64)
-equivalent_cycles = np.fromiter(map(lambda x: equivalent_fatigue(x, data=data, amplitudes=amplitudes), frequency),
+equivalent_cycles = np.fromiter(map(lambda x: equivalent_fatigue(x, data=data, amplitudes=amplitudes), freq_prev),
                                 dtype=np.float64)
-    
 equivalent_cycles = (equivalent_cycles/N_eq) ** b
-frequency_density = np.fromiter(map(lambda x: get_freq_density(x, data=data), frequency), dtype=np.float64)
-frequency_density /= frequency_density.sum()
+frequency_density = np.fromiter(map(lambda x: get_freq_density(x, data=data), freq_prev), dtype=np.float64)
+frequency = hist_sample([frequency_density, freq_prev], n=2500)
 # %%
 
-frequency = np.array(data['Frequency [Hz]'].values, dtype=np.float64).reshape(-1,1 )
-frequency /= frequency.mean()
-_,ax = plt.subplots(2,1, sharex=False, figsize=(12,5))
-ax[0].hist(equivalent_cycles)
-ax[1].plot(frequency, frequency_density)
+# frequency = np.array(data['Frequency [Hz]'].values, dtype=np.float64).reshape(-1,1 )
+_,ax = plt.subplots(2,1, sharex=False, figsize=(10,8))
+ax[0].hist(equivalent_cycles, density=True)
+ax[0].set_xlabel('Equiv. Cycles')
+ax[0].set_ylabel('Density')
+ax[1].hist(freq_prev)
+ax[1].set_xlabel('Frequency')
+ax[1].set_ylabel('Density')
+plt.savefig('plots2/data.jpg')
+plt.close()
+_,ax = plt.subplots(1,1, sharex=False, figsize=(10,8))
+ax.scatter(freq_prev, equivalent_cycles)
+ax.set_xlabel('Frequency')
+ax.set_ylabel('Equiv Cycles')
+plt.savefig('plots2/freqVsEquivC.jpg')
+plt.close()
 # %%
+
+frequency = np.array(frequency, dtype=np.float64)/frequency.max()
 
 with pm.Model() as frequency_model:
+    w = pm.Dirichlet('w', np.ones(2))
+    # w = np.array([1,0])
+    alphas = pm.HalfNormal('alphas', sigma=10, shape=(2,))
+    betas = pm.HalfNormal('betas', sigma=10, shape=(2,))
 
-    # scalling = pm.HalfNormal('Scale Factor', sigma= 2., shape=1)
-    # scalling = 1
-    
-    mu_param_1 = pm.HalfNormal('Mu_param_1', sigma= 1) 
-    mu_param_2 = pm.HalfNormal('Mu_param_2', sigma= 1)
-    
-    mu_sigma_1 = pm.HalfNormal('mu_sigma_1', sigma= 1)
-    mu_sigma_2 = pm.HalfNormal('mu_sigma_2', sigma= 1)
-    
-    sigma_param_1 = pm.HalfNormal('sigma_param_1', sigma= 1) 
-    sigma_param_2 = pm.HalfNormal('sigma_param_2', sigma= 1) 
-    
-    mu_1 = pm.Normal('Mu_1',mu = mu_param_1, sigma= 0.1)
-    sigma_1 = pm.HalfNormal('Sigma_1', sigma= sigma_param_1)
-    
-    mu_2 = pm.Normal('Mu_2',mu =mu_param_2, sigma= 0.1)
-    sigma_2 = pm.HalfNormal('Sigma_2', sigma=sigma_param_2)
-
-    mu = tt.stack([mu_1, mu_2])
-    sigma = tt.stack([sigma_1, sigma_2])
-    
-    w = pm.Dirichlet('w', a=np.array([1.,1.]))
-    
-    mix_1 = mixture_density(w, mu, sigma, x = frequency)
-     
-    noise_1 = pm.HalfNormal('noise_1', sigma = .1)     
-    noise_2 = pm.HalfNormal('noise_2', sigma = .1)     
-    
-    N_1 = pm.StudentT('N_1', mu = mix_1, nu = noise_1, sigma=noise_2, observed = frequency_density)
-    # N_1 = pm.Normal('N_1', mu = mix_1, sigma=noise_1, observed = frequency)
-    # noise = 0.01   
-    trace = pm.sample(draws=6000,
-                      chains=3,
-                      tune=6000,
-                      target_accept=0.92,
-                      return_inferencedata=False
-                      )
-    
+    weib_0 = pm.Weibull.dist(alpha=alphas[0], beta=betas[0])
+    weib_1 = pm.Weibull.dist(alpha=alphas[1], beta=betas[1])
+    GMM = pm.Mixture('likelihood',
+                     w=w,comp_dists=[weib_0, weib_1],
+                     observed=frequency)
+    trace = pm.sample_smc(draws=2000,chains=2,parallel=False)
+    # trace = pm.sample(draws=3000,
+    #                   chains=3,
+    #                   tune=3000,
+    #                   # target_accept=0.97,
+    #                   return_inferencedata=False
+    #                   )
     print(az.summary(trace))
     az.plot_trace(trace)
+    plt.savefig('plots2/traceplot.jpg')
+    plt.close()
+    az.plot_posterior(trace)
 
-    
+    plt.savefig('plots2/posteriorArviz.jpg')
+    plt.close()
+# %%
+with frequency_model:
+    samples = pm.sample_posterior_predictive(trace,6000, var_names=['likelihood'])
+
+_,ax = plt.subplots(1,1, sharex=False, figsize=(12,5))
+sns.kdeplot(frequency, ax=ax, label='observed')
+sns.kdeplot(samples['likelihood'].flatten(), ax=ax, label='Inference')
+plt.legend()
+plt.savefig('plots2/posterior.jpg')
+plt.close()
 # %%
