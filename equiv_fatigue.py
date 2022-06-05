@@ -1,7 +1,7 @@
 #%%
 import pymc3 as pm
 import arviz as az
-import pandas as pd 
+import pandas as pd
 import numpy as np
 
 from scipy import stats
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 def basquin_rel(N, B,b):
     return B*(N**b)
-
+#%%
 B = 8e5
 b = -1e-1
 
@@ -23,7 +23,7 @@ logN = np.log(Ns)
 logSigma = np.log(sigmas)
 variation_coeff = 1
 
-sigmas_rand = sigmas*(1+variation_coeff*np.random.normal(0, scale = .1, size = len(sigmas))) 
+sigmas_rand = sigmas*(1+variation_coeff*np.random.normal(0, scale = .1, size = len(sigmas)))
 
 logSrand = np.log(sigmas_rand)
 
@@ -50,8 +50,7 @@ def equivalent_fatigue(freq, data, amplitudes):
 def get_freq_density(freq, data):
     cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.int64)
     return cycles.sum()
-    
-data = pd.read_csv('cleansed_csvs/5BBOL2-137_VANO 136_OPGW_807625_19_02_2020.csv')
+data = pd.read_csv('tabula-Vano 55-56 (E lico) 800356.csv')
 data.set_index(data['Frequency [Hz]'])
 data.drop(data.index.values[-1], inplace=True)
 
@@ -62,7 +61,6 @@ frequency = np.array(data['Frequency [Hz]'].values)
 amplitudes = np.array(list(data.columns)[1:], np.float64)
 equivalent_cycles = np.fromiter(map(lambda x: equivalent_fatigue(x, data=data, amplitudes=amplitudes), frequency),
                                 dtype=np.float64)
-    
 equivalent_cycles = equivalent_cycles ** b
 frequency_density = np.fromiter(map(lambda x: get_freq_density(x, data=data), frequency), dtype=np.float64)
 frequency_density /= frequency_density.max()
@@ -86,11 +84,9 @@ with pm.Model() as GUEDE_disp_model:
     alpha = pm.HalfNormal('Alpha', sigma= 1.)
     beta = pm.HalfNormal('Beta', sigma= 1.)
     equivalent_fatigue_cycles = pm.Weibull('equivalent_fatigue', alpha=alpha, beta=beta, observed = equivalent_cycles)
-    
     # beta = 1
     # scalling = pm.HalfNormal('Scale Factor', sigma= 2., shape=1)
     # scalling = 1
-        
     # alpha = pm.Beta('alpha', alpha=2, beta=2, shape=1)
     # beta = pm.Beta('beta', alpha=2, beta=2, shape=1)
     nu = pm.HalfNormal('Nu', sigma=1)
@@ -99,30 +95,26 @@ with pm.Model() as GUEDE_disp_model:
     A = pm.HalfCauchy('A', beta = 8)
     variation_coeff = pm.HalfCauchy('variation_coeff',beta=5)
     mean = a*logN + A
-    
     noise_GUEDE = variation_coeff*mean
     likelihood = pm.StudentT('y', nu=nu, mu = mean, sigma = noise_GUEDE, observed = logSrand)
-     
     # trace:Dict[str,np.ndarray] = pm.sample_smc()
     trace:Dict[str,np.ndarray] = pm.sample(draws=5000, chains = 3, tune=4000, target_accept=0.8)
-    
     print(az.summary(trace))
     az.plot_trace(trace)
     plt.savefig('plots/trace_plot.png')
 
 # %%
 def Stress_stRenght(B, b, pf_slope, equivalent_cycles, N_eq = N_eq):
-    stresses = pf_slope * equivalent_cycles    
+    stresses = pf_slope * equivalent_cycles
     eq_stress = B * N_eq ** b
     G_RS = eq_stress - stresses
     return G_RS
-    
 
 label = 'damage'
 with GUEDE_disp_model:
-    B = tt.exp(A)    
+    B = tt.exp(A)
     pf_slope = pm.Normal('pf_slope', mu = 5.5e5, sigma = 2000)
-    damage = pm.Deterministic(label, 
+    damage = pm.Deterministic(label,
                               Stress_stRenght(B, a, pf_slope, equivalent_cycles=equivalent_fatigue_cycles))
     samples:Dict[str,np.ndarray] = pm.sample_posterior_predictive(trace, samples = 150000, var_names=[label])
 
