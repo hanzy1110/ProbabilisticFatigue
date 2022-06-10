@@ -14,19 +14,24 @@ SN_data = scipy.io.loadmat('SN_curve.mat')
 log_N = SN_data['X'].flatten().reshape((-1,1))
 S = SN_data['Y'].flatten()
 
+def logistic(x, a, x0, c):
+    # a is the slope, x0 is the location
+    return c *(1 - pm.math.invlogit(a * (x - x0)))
+
 #%%
 # A one dimensional column vector of inputs.
 with pm.Model() as SNCurveModel:
     l = pm.HalfCauchy('lenght_scale', beta=3)
     eta = pm.HalfNormal('eta', sigma=3)
-    cov_func = eta**2*pm.gp.cov.ExpQuad(input_dim=1, ls=l)
+    x0 = pm.HalfNormal('x0', sigma=10)
+    # a = pm.Normal('a', mu=0, sigma=10)
+    # c = pm.Normal('c', mu=0, sigma=10)
 
     gp = pm.gp.Latent(cov_func=cov_func)
     muF = gp.prior('muF', X=log_N)
     l_sigma = pm.Gamma('l_sigma', alpha=7, beta=0.5)
     eta_sigma = pm.Gamma('eta_sigma', alpha=7, beta=0.5)
     cov_sigma = eta_sigma**2 * pm.gp.cov.ExpQuad(1, ls=l_sigma) + pm.gp.cov.WhiteNoise(sigma=1e-6)
-
     gp_sigma = pm.gp.Latent(cov_func=cov_sigma)
     log_sigmaF = gp_sigma.prior('log_sigmaF', log_N)
     # sigmaF = pm.Deterministic('sigmaF', pm.math.exp(log_sigmaF))
@@ -39,7 +44,7 @@ with pm.Model() as SNCurveModel:
                              observed=S)
 
     # trace = pm.sample(draws=5000, tune=2000)
-    trace = pm.sample()
+    trace = pm.sample(return_inferencedata=False)
     summ = az.summary(trace)
     print(summ)
     az.plot_trace(trace)
@@ -65,6 +70,9 @@ def A(arr1, arr2):
 
 damageFun = vmap(A,in_axes=(0,0))
 damageVals = damageFun(y_samples['NNew'], y_samples['NNewDS'])
+y_samples['damageVals'] = damageVals
+
+y_samples = {key: val.tolist() for key, val in y_samples.items()}
 
 y_samples['damageVals'] = damageVals
 

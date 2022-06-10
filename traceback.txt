@@ -1,11 +1,19 @@
 Traceback (most recent call last):
-  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.9/site-packages/pudb/__init__.py", line 148, in runscript
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/site-packages/pudb/__init__.py", line 148, in runscript
     dbg._runscript(mainpyfile)
-  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.9/site-packages/pudb/debugger.py", line 514, in _runscript
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/site-packages/pudb/debugger.py", line 514, in _runscript
     self.run(statement)
-  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.9/bdb.py", line 580, in run
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/bdb.py", line 578, in run
     exec(cmd, globals, locals)
   File "<string>", line 1, in <module>
-  File "frequency_model.py", line 33, in <module>
-    data['Frequency [Hz]'] = np.array(data['Frequency [Hz]'].values, dtype=np.int64)
-ValueError: invalid literal for int() with base 10: 'Total cycles'
+  File "damageHeteroPlot.py", line 72, in <module>
+    plot_mean(axs[0], μ_samples, Xnew=SNew, ynew=y_samples["NNew"].mean(axis=0), X=S, y=log_N)
+  File "/home/blueman69/Documents/ProbabilisticFatigue/src/plotUtils.py", line 46, in plot_mean
+    ax.plot(Xnew, m, "C0", label="Median")
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/site-packages/matplotlib/axes/_axes.py", line 1632, in plot
+    lines = [*self._get_lines(*args, data=data, **kwargs)]
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/site-packages/matplotlib/axes/_base.py", line 312, in __call__
+    yield from self._plot_args(this, kwargs)
+  File "/home/blueman69/anaconda3/envs/dataSc/lib/python3.7/site-packages/matplotlib/axes/_base.py", line 498, in _plot_args
+    raise ValueError(f"x and y must have same first dimension, but "
+ValueError: x and y must have same first dimension, but have shapes (100, 1) and (1,)
