@@ -11,23 +11,32 @@ import jax.numpy as jnp
 from jax import vmap ,jit
 
 SN_data = scipy.io.loadmat('SN_curve.mat')
-log_N = SN_data['X'].flatten()
-S = SN_data['Y'].flatten().reshape((-1,1))
+log_N = SN_data['X'].flatten().reshape((-1,1))
+S = SN_data['Y'].flatten()
 
 #%%
 # A one dimensional column vector of inputs.
 with pm.Model() as SNCurveModel:
-    # Specify the covariance function.
     l = pm.HalfCauchy('lenght_scale', beta=3)
     eta = pm.HalfNormal('eta', sigma=3)
     cov_func = eta**2*pm.gp.cov.ExpQuad(input_dim=1, ls=l)
 
-    # Specify the GP.  The default mean function is `Zero`.
-    gp = pm.gp.Marginal(cov_func=cov_func)
+    gp = pm.gp.Latent(cov_func=cov_func)
+    muF = gp.prior('muF', X=log_N)
+    l_sigma = pm.Gamma('l_sigma', alpha=7, beta=0.5)
+    eta_sigma = pm.Gamma('eta_sigma', alpha=7, beta=0.5)
+    cov_sigma = eta_sigma**2 * pm.gp.cov.ExpQuad(1, ls=l_sigma) + pm.gp.cov.WhiteNoise(sigma=1e-6)
 
-    # The scale of the white noise term can be provided,
-    sigma = pm.HalfCauchy("sigma", beta=5)
-    y_ = gp.marginal_likelihood("y", X=S, y=log_N, noise=sigma)
+    gp_sigma = pm.gp.Latent(cov_func=cov_sigma)
+    log_sigmaF = gp_sigma.prior('log_sigmaF', log_N)
+    # sigmaF = pm.Deterministic('sigmaF', pm.math.exp(log_sigmaF))
+    # y_ = gp.marginal_likelihood("y", y=S, X=log_N, noise=sigma)
+
+    nu = pm.Gamma('nu', alpha=8, beta=0.5)
+    likelihood = pm.StudentT('likelihood',
+                             nu=nu, mu=muF,
+                             sigma=log_sigmaF,
+                             observed=S)
 
     # trace = pm.sample(draws=5000, tune=2000)
     trace = pm.sample()
@@ -38,15 +47,15 @@ with pm.Model() as SNCurveModel:
     plt.close()
 
 #%%
-ds = 1 # in some units that make sense
-SNew = np.linspace(S.min(), S.max(), 100)[:, None]
-SNewDS = np.linspace(S.min()+ds, S.max()+ds, 100)[:, None]
+ds = 2 # in some units that make sense
+logNNew = np.linspace(log_N.min(), log_N.max(), 100)[:, None]
+logNNewDN = np.linspace(S.min()+ds, S.max()+ds, 100)[:, None]
 with SNCurveModel:
-    NNew = gp.conditional("NNew", Xnew=SNew, pred_noise=True)
-    NNewDS = gp.conditional("NNewDS", Xnew=SNewDS, pred_noise=True)
-
+    SNew = gp.conditional("SNew", Xnew=logNNew)
+    SNEWDS = gp.conditional("SNEWDS", Xnew=logNNewDN)
+    sigma_ = gp_sigma.conditional('sigma', Xnew=logNNew)
     # or to predict the GP plus noise
-    y_samples = pm.sample_posterior_predictive(trace=trace, var_names=['NNew','NNewDS'])
+    y_samples = pm.sample_posterior_predictive(trace=trace, var_names=['SNew','SNEWDS', 'sigma'])
 
 #%%
 def A(arr1, arr2):
@@ -57,8 +66,9 @@ def A(arr1, arr2):
 damageFun = vmap(A,in_axes=(0,0))
 damageVals = damageFun(y_samples['NNew'], y_samples['NNewDS'])
 
-with open('plots3/damage.npy','w') as file:
-    jnp.save(file,damageVals)
+y_samples['damageVals'] = damageVals
+
+y_samples = {key: val.tolist() for key, val in y_samples.items()}
 with open('plots3/samples.json','w') as file:
     json.dump(y_samples, file)
 #%%
