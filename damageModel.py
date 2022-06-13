@@ -10,33 +10,28 @@ import json
 import jax.numpy as jnp
 from jax import vmap ,jit
 
-SN_data = scipy.io.loadmat('SN_curve.mat')
+SN_data = scipy.io.loadmat('data/SN_curve.mat')
 log_N = SN_data['X'].flatten().reshape((-1,1))
 S = SN_data['Y'].flatten()
 
-def logistic(x, a, x0, c):
-    # a is the slope, x0 is the location
-    return c *(1 - pm.math.invlogit(a * (x - x0)))
+ds = 2 # in some units that make sense
+logNNew = np.linspace(log_N.min(), log_N.max(), 100)[:, None]
 
 #%%
-# A one dimensional column vector of inputs.
-with pm.Model() as SNCurveModel:
-    l = pm.HalfCauchy('lenght_scale', beta=3)
-    eta = pm.HalfNormal('eta', sigma=3)
-    x0 = pm.HalfNormal('x0', sigma=10)
-    # a = pm.Normal('a', mu=0, sigma=10)
-    # c = pm.Normal('c', mu=0, sigma=10)
 
+with pm.Model() as SNCurveModel:
+    l = pm.HalfCauchy('lenght_scale', beta=1, shape=(2,))
+    eta = pm.HalfCauchy('eta', beta=1, shape=(2,))
+    cov_func = eta[1]**2 * pm.gp.cov.Exponential(1, ls=l[1])
     gp = pm.gp.Latent(cov_func=cov_func)
     muF = gp.prior('muF', X=log_N)
-    l_sigma = pm.Gamma('l_sigma', alpha=7, beta=0.5)
-    eta_sigma = pm.Gamma('eta_sigma', alpha=7, beta=0.5)
-    cov_sigma = eta_sigma**2 * pm.gp.cov.ExpQuad(1, ls=l_sigma) + pm.gp.cov.WhiteNoise(sigma=1e-6)
-    gp_sigma = pm.gp.Latent(cov_func=cov_sigma)
-    log_sigmaF = gp_sigma.prior('log_sigmaF', log_N)
-    # sigmaF = pm.Deterministic('sigmaF', pm.math.exp(log_sigmaF))
-    # y_ = gp.marginal_likelihood("y", y=S, X=log_N, noise=sigma)
 
+    # l_sigma = pm.Gamma('l_sigma', alpha=7, beta=0.5)
+    # eta_sigma = pm.Gamma('eta_sigma', alpha=7, beta=0.5)
+    # cov_sigma = eta[0]**2 * pm.gp.cov.Exponential(1, ls=l[0])
+    # gp_sigma = pm.gp.Latent(cov_func=cov_sigma)
+    # log_sigmaF = gp_sigma.prior('log_sigmaF', log_N)
+    log_sigmaF = pm.Weibull('log_sigmaF', alpha=1, beta=1)
     nu = pm.Gamma('nu', alpha=8, beta=0.5)
     likelihood = pm.StudentT('likelihood',
                              nu=nu, mu=muF,
@@ -52,29 +47,23 @@ with pm.Model() as SNCurveModel:
     plt.close()
 
 #%%
-ds = 2 # in some units that make sense
-logNNew = np.linspace(log_N.min(), log_N.max(), 100)[:, None]
-logNNewDN = np.linspace(S.min()+ds, S.max()+ds, 100)[:, None]
 with SNCurveModel:
     SNew = gp.conditional("SNew", Xnew=logNNew)
-    SNEWDS = gp.conditional("SNEWDS", Xnew=logNNewDN)
-    sigma_ = gp_sigma.conditional('sigma', Xnew=logNNew)
+    # sigma_ = gp_sigma.conditional('sigma', Xnew=logNNew)
     # or to predict the GP plus noise
-    y_samples = pm.sample_posterior_predictive(trace=trace, var_names=['SNew','SNEWDS', 'sigma'])
+    y_samples = pm.sample_posterior_predictive(trace=trace, var_names=['SNew'])
 
 #%%
-def A(arr1, arr2):
-    arr1 = jnp.array(arr1)
-    arr2 = jnp.array(arr2)
-    return arr1/arr2
 
-damageFun = vmap(A,in_axes=(0,0))
-damageVals = damageFun(y_samples['NNew'], y_samples['NNewDS'])
-y_samples['damageVals'] = damageVals
+# def A(logNNew):
+#     pass
+# damageFun = vmap(A,in_axes=(0,0))
+# damageVals = damageFun(y_samples['NNew'], y_samples['NNewDS'])
+# y_samples['damageVals'] = damageVals
 
-y_samples = {key: val.tolist() for key, val in y_samples.items()}
+# y_samples = {key: val.tolist() for key, val in y_samples.items()}
 
-y_samples['damageVals'] = damageVals
+# y_samples['damageVals'] = damageVals
 
 y_samples = {key: val.tolist() for key, val in y_samples.items()}
 with open('plots3/samples.json','w') as file:

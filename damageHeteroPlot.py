@@ -16,10 +16,12 @@ from jax import vmap ,jit
 SN_data = scipy.io.loadmat('data/SN_curve.mat')
 log_N = SN_data['X'].flatten()
 S = SN_data['Y'].flatten().reshape((-1,1))
-
+NMax = log_N.max()
+SMax = S.max()
+log_N /= NMax
+S/=SMax
 ds = 10 # in some units that make sense
 SNew = np.linspace(S.min(), S.max(), 100)[:, None]
-SNewDS = np.linspace(S.min()+ds, S.max()+ds, 100)[:, None]
 
 ℓ_μ, ℓ_σ = [stat for stat in get_ℓ_prior(S.flatten())]
 
@@ -59,12 +61,12 @@ with open('plots3/samples.json','r') as file:
     y_samples = json.load(file)
 
 y_samples = {key:jnp.array(val) for key, val in y_samples.items()}
-counts, bins = jnp.histogram(y_samples['damageVals'].flatten())
+# counts, bins = jnp.histogram(y_samples['damageVals'].flatten())
 
-_, ax = plt.subplots(1,1,figsize=(10, 4))
-ax.hist(bins[:-1], bins, weights=counts)
-plt.savefig('plots3/damageParam.jpg')
-plt.close()
+# _, ax = plt.subplots(1,1,figsize=(10, 4))
+# ax.hist(bins[:-1], bins, weights=counts)
+# plt.savefig('plots3/damageParam.jpg')
+# plt.close()
 
 _, axs = plt.subplots(1, 3, figsize=(18, 4))
 # μ_samples = y_samples["NNew"].mean(axis=0)
@@ -76,5 +78,5 @@ plot_total(axs[2], μ_samples,
            var_samples=σ_samples ** 2,
            Xnew=SNew, ynew=y_samples['NNew'].mean(axis=0),
            X_obs=S, y_obs_=log_N)
-plt.savefig('plots3/heteroModel.jpg')
+plt.savefig('plots4/heteroModel.jpg')
 plt.close()

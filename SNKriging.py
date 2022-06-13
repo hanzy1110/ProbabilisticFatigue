@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pymc3.gp.util import plot_gp_dist
 
-SN_data = scipy.io.loadmat('SN_curve.mat')
+SN_data = scipy.io.loadmat('data/SN_curve.mat')
 log_N = SN_data['X'].flatten().reshape((-1,1))
 S = SN_data['Y'].flatten()
 
