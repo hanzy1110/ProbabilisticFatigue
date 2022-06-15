@@ -5,8 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
-
-cleansed_csvs/*
+oldScripts/*
+Results1/*
+cleansed_csvs/
 
 # Distribution / packaging
 .Python

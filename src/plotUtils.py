@@ -101,9 +101,10 @@ def plot_total(ax, mean_samples, Xnew, ynew, X_obs, y_obs_,  var_samples=None, b
         m = mean_samples.mean(axis=0)
         ax.plot(Xnew, m, "C0", label="Mean")
         sd = np.sqrt(mean_samples.var(axis=0) + var_samples.mean(axis=0))
-        l, u = m - 2 * sd, m + 2 * sd
+        l, u = m + 2 * sd, m + 2 * sd
 
-    ax.fill_between(Xnew.flatten(), l, u, facecolor="C0", alpha=0.5, label="Total 95% CI")
+    ax.fill_between(Xnew.flatten(), u, facecolor="C0", alpha=0.5, label="Total 95% CI")
+    # ax.fill_between(Xnew.flatten(), l, u, facecolor="C0", alpha=0.5, label="Total 95% CI")
 
     ax.plot(Xnew, ynew, "--k", label="Mean Function")
     ax.plot(X_obs, y_obs_, "C1.", label="Observations")
