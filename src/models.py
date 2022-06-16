@@ -68,8 +68,8 @@ class DamageCalculation:
             cov = pm.gp.cov.ScaledCov(1, scaling_func=logistic, args=(a, x0, c), cov_func=cov_base)
 
             self.gp_ht = pm.gp.Latent(cov_func=cov)
-            μ_f = self.gp_ht.prior("μ_f", X=S)
-
+            mu_f = self.gp_ht.prior("mu_f", X=S)
+            μ_f  = pm.Deterministic('μ_f', pm.math.log1pexp(mu_f))
             σ_ℓ = pm.Gamma("σ_ℓ", mu=ℓ_μ, sigma=ℓ_σ)
             σ_η = pm.Gamma("σ_η", alpha=2, beta=1)
 
@@ -80,12 +80,13 @@ class DamageCalculation:
             σ_f = pm.Deterministic("σ_f", pm.math.exp(σ_f))
 
             nu = pm.Gamma("nu", alpha=2, beta=1)
-            lik_ht = pm.StudentT("lik_ht",nu=nu,  mu=μ_f, sd=σ_f, observed=self.log_N)
+            lik_ht = pm.StudentT("lik_ht",nu=nu,  mu=μ_f, sigma=σ_f, observed=self.log_N)
 
     def sampleModel(self, ndraws):
 
         with self.SNCurveModel:
             self.trace = pm.sample_smc(draws=ndraws, parallel=True)
+            # self.trace = pm.sample()
             summ = az.summary(self.trace)
             print(summ)
             summ.to_csv(os.path.join(self.resultsFolder,'summ.csv'))
@@ -153,3 +154,5 @@ class DamageCalculation:
         plot_gp_dist(axs[1], y_samples["log_σ_f_pred"], self.SNew[:,None])
         axs[1].set_xlabel('Stress/MaxStress')
         axs[1].set_ylabel('Calculated Variance')
+        plt.savefig(os.path.join(self.resultsFolder,'GPDist.jpg'))
+        plt.close()

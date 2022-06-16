@@ -28,6 +28,9 @@ def get_freq_density(freq, data):
 class FatigueModel:
     def __init__(self, resultsFolder:str, b_mean:float, observedDataPath:str):
 
+        if not os.path.exists(resultsFolder):
+            os.makedirs(resultsFolder)
+
         self.resultsFolder = resultsFolder
         data = pd.read_csv(observedDataPath)
         data.set_index(data['Frequency [Hz]'], inplace=True)
@@ -37,7 +40,9 @@ class FatigueModel:
         self.freq_prev = np.array(data['Frequency [Hz]'].values)
         self.amplitudes = np.array(list(data.columns)[1:], np.float64)
         self.frequency_density = np.fromiter(map(lambda x: get_freq_density(x, data=data), self.freq_prev), dtype=np.float64)
-        self.frequency = hist_sample([self.frequency_density, self.freq_prev], n=2500)
+        freq = [int(d) for d in data['Frequency [Hz]'].values]
+        self.frequency = np.array(freq)
+        self.frequency = hist_sample([self.frequency_density, self.frequency], n=2500)
 
     def NormalizeData(self, plotExp:bool=True):
 

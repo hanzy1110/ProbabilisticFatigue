@@ -42,6 +42,8 @@ def plot_mean(ax, mean_samples, Xnew, ynew, X, y):
     our hyperparameters. As such, we use percentiles rather than mean +/- stdev to
     represent the spread of predictions from our models.
     """
+    mean_samples = np.log(1+np.exp(mean_samples))
+    ynew = np.log(1+np.exp(ynew))
     l, m, u = get_quantiles(mean_samples)
     ax.plot(Xnew, m, "C0", label="Median")
 
@@ -57,13 +59,14 @@ def plot_mean(ax, mean_samples, Xnew, ynew, X, y):
 def plot_var(ax, var_samples, X, Xnew, y_err):
     """Plots the median and 95% CI from samples of the variance"""
     Xnew_ = Xnew.flatten()
+    var_samples = np.exp(var_samples)
     if var_samples.squeeze().ndim == 1:
         ax.plot(Xnew, var_samples, "C0", label="Median")
     else:
         l, m, u = get_quantiles(var_samples)
         ax.plot(Xnew, m, "C0", label="Median")
         ax.fill_between(Xnew.flatten(), l, u, facecolor="C0", alpha=0.5, label="95% CI")
-    ax.plot(Xnew, noise(signal(Xnew_)) ** 2, "--k", label="Noise Function")
+    # ax.plot(Xnew, noise(signal(Xnew_)) ** 2, "--k", label="Noise Function")
     # ax.plot(X, y_err ** 2, "C1.", label="Observed Variance")
     ax.set_title("Variance Behavior")
     ax.legend(loc="upper left")
@@ -79,6 +82,8 @@ def plot_total(ax, mean_samples, Xnew, ynew, X_obs, y_obs_,  var_samples=None, b
     the percentiles will likely give a more accurate representation.
     """
 
+    mean_samples = np.log(1+np.exp(mean_samples))
+    ynew = np.log(1+np.exp(ynew))
     Xnew_ = Xnew.flatten()
     if (var_samples is None) or (var_samples.squeeze().ndim == 1):
         samples = mean_samples
