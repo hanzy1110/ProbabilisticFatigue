@@ -1,11 +1,10 @@
-from src.models import DamageCalculation
-from src.freqModel import FatigueModel
+from src.models import WohlerCurve
+from src.freqModel import LoadModel
 
-fatigue = FatigueModel(resultsFolder='Results2', observedDataPath='data/800356.csv', b_mean=-0.1)
+fatigue = LoadModel(resultsFolder='Results2', observedDataPath='data/800356.csv', b_mean=-0.1)
 fatigue.buildMixtureFreqModel()
 fatigue.sampleModel(3000)
 fatigue.samplePosterior()
-
 
 # damage = DamageCalculation('Results1', 'data/SN_curve.mat')
 # damage.build_HeteroskedasticModel()

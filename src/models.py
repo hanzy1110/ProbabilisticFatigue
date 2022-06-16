@@ -17,7 +17,7 @@ def logistic(x, a, x0, c):
     # a is the slope, x0 is the location
     return c *(1 - pm.math.invlogit(a * (x - x0)))
 
-class DamageCalculation:
+class WohlerCurve:
 
     def __init__(self, resultsFolder:str,
                  observedDataPath:str='data/SN_curve.mat', )->None:
@@ -156,3 +156,8 @@ class DamageCalculation:
         axs[1].set_ylabel('Calculated Variance')
         plt.savefig(os.path.join(self.resultsFolder,'GPDist.jpg'))
         plt.close()
+
+    def restoreTrace(self):
+        trace = pd.read_csv(os.path.join(self.resultsFolder, 'trace.csv'))
+        trace = az.convert_to_inference_data(trace.to_dict())
+        return trace

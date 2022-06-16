@@ -25,7 +25,7 @@ def get_freq_density(freq, data):
     cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.float64)
     return cycles.sum()
 
-class FatigueModel:
+class LoadModel:
     def __init__(self, resultsFolder:str, b_mean:float, observedDataPath:str):
 
         if not os.path.exists(resultsFolder):
@@ -67,7 +67,7 @@ class FatigueModel:
 
             weib_0 = pm.Weibull.dist(alpha=alphas[0], beta=betas[0])
             weib_1 = pm.Weibull.dist(alpha=alphas[1], beta=betas[1])
-            GMM = pm.Mixture('likelihood',
+            self.loads = pm.Mixture('likelihood',
                              w=w,comp_dists=[weib_0, weib_1],
                              observed=self.frequency)
 
@@ -96,3 +96,8 @@ class FatigueModel:
         plt.legend()
         plt.savefig(os.path.join(self.resultsFolder, 'posterior.jpg'))
         plt.close()
+
+    def restoreTrace(self):
+            trace = pd.read_csv(os.path.join(self.resultsFolder, 'trace.csv'))
+            trace = az.convert_to_inference_data(trace.to_dict())
+            return trace
