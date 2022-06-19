@@ -86,6 +86,9 @@ class WohlerCurve:
 
         with self.SNCurveModel:
             self.trace = pm.sample_smc(draws=ndraws, parallel=True)
+            if not isinstance(self.trace, az.InferenceData):
+                self.trace = az.convert_to_inference_data(self.trace)
+
             # self.trace = pm.sample()
             summ = az.summary(self.trace)
             print(summ)
@@ -94,8 +97,11 @@ class WohlerCurve:
             plt.savefig(os.path.join(self.resultsFolder,'traceplot.jpg'))
             plt.close()
 
-        df = pm.backends.tracetab.trace_to_dataframe(self.trace)
-        df.to_csv(os.path.join(self.resultsFolder, 'trace.csv'))
+        # df = pm.backends.tracetab.trace_to_dataframe(self.trace)
+        az.to_netcdf(data=self.trace,
+                     filename=os.path.join(self.resultsFolder, 'trace.nc'))
+        # df = self.trace.to_dataframe()
+        # df.to_csv(os.path.join(self.resultsFolder, 'trace.csv'))
 
     def samplePosterior(self):
 
@@ -117,7 +123,7 @@ class WohlerCurve:
 
         S = self.S.reshape((-1,1))
 
-        with open(os.path.join(self.resultsFolder, 'samples.json'),'r') as file:
+        with open(os.path.join(self.resultsFolder, 'lifeSamples.json'),'r') as file:
             y_samples = json.load(file)
 
         y_samples = {key:jnp.array(val) for key, val in y_samples.items()}
@@ -158,6 +164,10 @@ class WohlerCurve:
         plt.close()
 
     def restoreTrace(self):
-        trace = pd.read_csv(os.path.join(self.resultsFolder, 'trace.csv'))
-        trace = az.convert_to_inference_data(trace.to_dict())
-        return trace
+        try:
+            # trace = pd.read_csv(os.path.join(self.resultsFolder, 'trace.csv'))
+            self.trace = az.from_netcdf(filename=os.path.join(self.resultsFolder, 'trace.nc'))
+        except Exception as e:
+            print(e)
+            self.sampleModel(2000)
+        return self.trace
