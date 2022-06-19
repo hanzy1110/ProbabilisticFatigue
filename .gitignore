@@ -7,6 +7,7 @@ __pycache__/
 *.so
 oldScripts/*
 Results1/*
+Results2/*
 cleansed_csvs/
 
 # Distribution / packaging

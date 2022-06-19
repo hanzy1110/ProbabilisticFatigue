@@ -17,6 +17,9 @@ def logistic(x, a, x0, c):
     # a is the slope, x0 is the location
     return c *(1 - pm.math.invlogit(a * (x - x0)))
 
+def log1exp(arr:jnp.ndarray):
+    return jnp.log(1+jnp.exp(arr))
+
 class WohlerCurve:
 
     def __init__(self, resultsFolder:str,
@@ -60,12 +63,13 @@ class WohlerCurve:
             ℓ = pm.Gamma("ℓ", mu=ℓ_μ, sigma=ℓ_σ)
             η = pm.Gamma("η", alpha=2, beta=1)
 
-            x0 = pm.Gamma("x0", alpha=2, beta=1)
-            a = pm.Gamma("a", alpha=2, beta=1)
-            c = pm.Gamma("c", alpha=2, beta=1)
+            # x0 = pm.Gamma("x0", alpha=2, beta=1)
+            # a = pm.Gamma("a", alpha=2, beta=1)
+            # c = pm.Gamma("c", alpha=2, beta=1)
 
-            cov_base = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
-            cov = pm.gp.cov.ScaledCov(1, scaling_func=logistic, args=(a, x0, c), cov_func=cov_base)
+            # cov_base = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
+            cov = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
+            # cov = pm.gp.cov.ScaledCov(1, scaling_func=logistic, args=(a, x0, c), cov_func=cov_base)
 
             self.gp_ht = pm.gp.Latent(cov_func=cov)
             mu_f = self.gp_ht.prior("mu_f", X=S)
@@ -105,6 +109,8 @@ class WohlerCurve:
 
     def samplePosterior(self):
 
+        self.restoreTrace()
+
         with self.SNCurveModel:
             NNew = self.gp_ht.conditional("NNew", Xnew=self.SNew)
             lg_σ_f_pred = self.σ_gp.conditional("log_σ_f_pred", Xnew=self.SNew)
@@ -123,7 +129,7 @@ class WohlerCurve:
 
         S = self.S.reshape((-1,1))
 
-        with open(os.path.join(self.resultsFolder, 'lifeSamples.json'),'r') as file:
+        with open(os.path.join(self.resultsFolder, 'samples.json'),'r') as file:
             y_samples = json.load(file)
 
         y_samples = {key:jnp.array(val) for key, val in y_samples.items()}
@@ -151,13 +157,15 @@ class WohlerCurve:
 
         _, axs = plt.subplots(1, 2, figsize=(12, 8))
 
-        plot_gp_dist(axs[0], y_samples['NNew'], self.SNew[:,None], palette="bone_r")
+        newMean = vmap(log1exp, in_axes=(0,))(y_samples['NNew'])
+
+        plot_gp_dist(axs[0], newMean, self.SNew[:,None], palette="bone_r")
         axs[0].scatter(self.S, self.log_N, label="Experimental Data")
         axs[0].set_xlabel('Stress/MaxStress')
         axs[0].set_ylabel('log(N)/max(log(N))')
         print(y_samples["log_σ_f_pred"].shape)
         print(self.SNew.shape)
-        plot_gp_dist(axs[1], y_samples["log_σ_f_pred"], self.SNew[:,None])
+        plot_gp_dist(axs[1], σ_samples, self.SNew[:,None])
         axs[1].set_xlabel('Stress/MaxStress')
         axs[1].set_ylabel('Calculated Variance')
         plt.savefig(os.path.join(self.resultsFolder,'GPDist.jpg'))
