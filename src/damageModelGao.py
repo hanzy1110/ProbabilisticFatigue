@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
 from jax import jit, vmap, lax
-from functools import partial
+from functools import partial, reduce
 import jax.numpy as jnp
 
 @partial(jit, static_argnums=0)
