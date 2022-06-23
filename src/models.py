@@ -172,10 +172,10 @@ class WohlerCurve:
         plt.close()
 
     def restoreTrace(self):
-        try:
-            # trace = pd.read_csv(os.path.join(self.resultsFolder, 'trace.csv'))
-            self.trace = az.from_netcdf(filename=os.path.join(self.resultsFolder, 'trace.nc'))
-        except Exception as e:
-            print(e)
+        path = os.path.join(self.resultsFolder, 'trace.nc')
+
+        if os.path.exists(path):
+            self.trace = az.from_netcdf(filename=path)
+        else:
             self.sampleModel(2000)
         return self.trace

@@ -1,9 +1,6 @@
 from src.combinedModel import DamageCalculation
 
 # Re sample posterior to plot properly
-# damageCal.sample_model('wohler', 3000)
-# damageCal.WohlerC.samplePosterior()
-# damageCal.WohlerC.plotGP()
 
 def main():
 
@@ -11,10 +8,25 @@ def main():
                               loadObserved='data/800369.csv',
                               WohlerObserved='data/SN_curve.mat',
                               loadPath='Results2')
-    damageCal.restoreLoadSamples(ndraws=50000)
-    damageCal.restoreFatigueLifeSamples(maxLoads=50)
+    # damageCal.sample_model('wohler', 2000)
+    # damageCal.sample_model('loads', 2000)
+    # damageCal.WohlerC.samplePosterior()
+    # damageCal.WohlerC.plotGP()
+    damageCal.restoreLoadSamples(ndraws=20000)
+    damageCal.restoreFatigueLifeSamples(maxLoads=20)
     damageCal.plotFatigueLifeSamples()
-    damages = damageCal.calculateDamage_debug()
+    damageCal.plotLoadSamples()
+    # damages = damageCal.calculateDamage_debug()
+
+    print('max vals WohlerC-->')
+    print(damageCal.WohlerC.NMax)
+    print(damageCal.WohlerC.SMax)
+
+    print('max vals Loads-->')
+    print(damageCal.LoadM.maxAmp)
+
+    damages = damageCal.calculateDamage()
+    print(damages)
 
 if __name__=='__main__':
     main()
