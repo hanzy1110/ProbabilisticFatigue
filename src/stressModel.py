@@ -22,4 +22,4 @@ class CableProps:
         self.lambda_ = np.sqrt(T/self.getEImin())
 
     def PFSlope(self, a:float=89.0):
-        self.K = self.Eal*(2*self.rw) * self.lambda_/(4*(np.exp(-self.lambda_*a)-1+self.lambda_*a))
+        return self.Eal*(2*self.rw) * self.lambda_**2/(4*(np.exp(-self.lambda_*a)-1+self.lambda_*a))

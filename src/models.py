@@ -36,8 +36,8 @@ class WohlerCurve:
 
     def NormalizeData(self, plotExp:bool):
 
-        self.NMax = self.log_N.max()
-        self.log_N /= self.NMax
+        self.NMax = np.log(self.log_N.max()*1e6)
+        self.log_N = np.log(self.log_N*1e6)/self.NMax
 
         self.SMax = self.S.max()
         self.S/=self.SMax
