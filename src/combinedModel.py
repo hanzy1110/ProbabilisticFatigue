@@ -25,7 +25,7 @@ def log1exp(arr:jnp.ndarray):
     return jnp.log(1+jnp.exp(arr))
 
 @jax.jit
-def fillArray(arr:jnp.DeviceArray, num:int=10):
+def fillArray(arr:jnp.DeviceArray, num:int=5):
     return reduce(lambda x,y: jnp.hstack((x,
                              jnp.linspace(x.max(), y, num=num))),
                              arr)
@@ -35,7 +35,8 @@ def sliceArrs(arr1, arr2, out):
     init = jnp.array([False for _ in masks[0]])
     mask = reduce(lambda x,y: jnp.logical_or(x,y), masks, init)
     # mask = arr1<arr2.max() or arr1>arr2.min()
-    return jnp.transpose(out)[mask]
+    # return jnp.transpose(out)[mask]
+    return jnp.where(mask, jnp.transpose(out), -10)
 
 class DamageCalculation:
     def __init__(self, wohlerPath:str, loadPath:str,
@@ -75,7 +76,6 @@ class DamageCalculation:
 
         self.joinAmplitudesStress(maxLoads)
 
-
         if os.path.exists(os.path.join(self.wohlerPath, 'lifeSamples.npz')):
             self.loadLifeSamples()
         else:
@@ -111,15 +111,15 @@ class DamageCalculation:
     def sampleFatigueLife(self, maxLoads:int):
 
         print("Sampling Fatigue Life")
+        Xnew = self.SNew[0,:].reshape((-1,1))
         with self.WohlerC.SNCurveModel:
-            meanN = self.WohlerC.gp_ht.conditional('meanN', Xnew=self.SNew)
-            # sigmaN = self.WohlerC.σ_gp.conditional('sigmaN', Xnew=self.SNew.reshape((-1,1)))
+            meanN = self.WohlerC.gp_ht.conditional('meanN', Xnew=Xnew)
+            sigmaN = self.WohlerC.σ_gp.conditional('sigmaN', Xnew=Xnew)
             # totalN = pm.Deterministic('totalN', meanN + sigmaN)
-            self.samples = pm.sample_posterior_predictive(self.traceWohler, var_names=['meanN'])
+            self.samples = pm.sample_posterior_predictive(self.traceWohler, var_names=['meanN','sigmaN'])
 
         meanSamples = self.samples['meanN']
-        # varianceSamples = self.samples['sigmaN']
-        varianceSamples = np.zeros(2)
+        varianceSamples = self.samples['sigmaN']
         print('shapes-->')
         print(meanSamples.shape)
         print(varianceSamples.shape)
@@ -192,9 +192,8 @@ class DamageCalculation:
 
         print("meanSamples shape-->",self.meanSamples.shape)
         print("Total N shape-->",self.totalN.shape)
-        SNew = jnp.array(self.SNew.flatten())
-        # sliceArrsvmap = jax.vmap(sliceArrs, in_axes=(None, 0, None))
-        self.slicedTotal = sliceArrs(SNew, self.amplitudes, self.totalN)
+        sliceArrsvmap = jax.vmap(sliceArrs, in_axes=(0, 0, None))
+        self.slicedTotal = sliceArrsvmap(self.SNew, self.amplitudes, self.totalN)
         self.slicedTotal = jnp.transpose(self.slicedTotal)
         self.totalNNotNorm = self.slicedTotal * self.WohlerC.NMax
 
@@ -210,13 +209,14 @@ class DamageCalculation:
         # self.cycles, self.amplitudes = jnp.histogram(loads.flatten(), bins=maxLoads)
         # Transform to amplitudes and then to 0,1 in Wohler Space
         self.amplitudes /= self.WohlerC.SMax
-        self.cycles = self.cycles[:,0]
-        self.amplitudes = self.amplitudes[:,0]
+        # self.cycles = self.cycles[:,0]
+        # self.amplitudes = self.amplitudes[:,0]
 
-        # self.SNew = fillArray(jnp.unique(self.amplitudes))
-        self.SNew = fillArray(self.amplitudes)
+        vFillArray = jax.jit(jax.vmap(fillArray, in_axes=(0,)))
+        self.SNew = vFillArray(self.amplitudes)
+        vUnique = jax.vmap(lambda x: jnp.unique(x, size=180), in_axes=(0,))
+        self.SNew = vUnique(self.SNew)
         print(f'SNew shape: {self.SNew.shape}')
-        self.SNew = jnp.unique(self.SNew).reshape((-1,1))
 
     def sample_model(self, model:str, ndraws):
         if model == 'wohler':
