@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pymc3 as pm
 from pymc3.gp.util import plot_gp_dist
-from functools import reduce
+from functools import reduce, partial
 import jax.numpy as jnp
 import jax
 import json
@@ -24,19 +24,21 @@ def amplitudesToLoads(amplitudes, pf_slope):
 def log1exp(arr:jnp.ndarray):
     return jnp.log(1+jnp.exp(arr))
 
+def log1expM(arr:jnp.ndarray):
+    return jnp.log(jnp.exp(arr)-1)
+
 @jax.jit
 def fillArray(arr:jnp.DeviceArray, num:int=5):
     return reduce(lambda x,y: jnp.hstack((x,
                              jnp.linspace(x.max(), y, num=num))),
                              arr)
 
-def sliceArrs(arr1, arr2, out):
-    masks = [jnp.isclose(arr1, val) for val in arr2]
+def sliceArrs(dct, out):
+    masks = [jnp.isclose(dct['arr1'], val) for val in dct['arr2']]
     init = jnp.array([False for _ in masks[0]])
     mask = reduce(lambda x,y: jnp.logical_or(x,y), masks, init)
-    # mask = arr1<arr2.max() or arr1>arr2.min()
-    # return jnp.transpose(out)[mask]
-    return jnp.where(mask, jnp.transpose(out), -10)
+    return jnp.transpose(out)[jnp.where(mask, size=out.shape[1],fill_value=-1)]
+    # return jnp.where(mask.flatten(), jnp.transpose(out), -10)
 
 class DamageCalculation:
     def __init__(self, wohlerPath:str, loadPath:str,
@@ -133,13 +135,15 @@ class DamageCalculation:
         Nf = jnp.array(self.Nsamples)
         lnNf = jnp.array(self.slicedTotal)
         damageFun = jax.vmap(gaoModel, in_axes=(None,0,0))
-        self.damages = damageFun(cycles, Nf, lnNf)
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
+        self.damages = coolDamageFun(cycles).flatten()
 
         _, ax = plt.subplots(2,1, figsize=(12,8))
         ax[0].plot(self.damages)
 
         try:
-            counts, bins = jnp.histogram(self.damages)
+            counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
+                                         bins=50, density=True)
             ax[1].hist(bins[:-1], bins, weights=counts)
         except Exception as e:
             print(e)
@@ -192,8 +196,15 @@ class DamageCalculation:
 
         print("meanSamples shape-->",self.meanSamples.shape)
         print("Total N shape-->",self.totalN.shape)
-        sliceArrsvmap = jax.vmap(sliceArrs, in_axes=(0, 0, None))
-        self.slicedTotal = sliceArrsvmap(self.SNew, self.amplitudes, self.totalN)
+
+        sliceArrsvmap = jax.jit(jax.vmap(lambda dct: sliceArrs(dct, self.totalN),
+                                         in_axes=({'arr1':0, 'arr2':0},)))
+
+        # transposeT = jnp.transpose(self.totalN)
+        dct = {'arr1':self.SNew[0,:], 'arr2':self.amplitudes[0,:]}
+        # self.slicedTotal = sliceArrsvmap(dct)
+        self.slicedTotal = sliceArrs(dct, self.totalN)
+        # self.slicedTotal = reduce(lambda x,y: jnp.vstack((x, jnp.where(y, transposeT, -1))), masks)
         self.slicedTotal = jnp.transpose(self.slicedTotal)
         self.totalNNotNorm = self.slicedTotal * self.WohlerC.NMax
 

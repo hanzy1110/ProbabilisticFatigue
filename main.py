@@ -3,11 +3,11 @@ from src.combinedModel import DamageCalculation
 # Re sample posterior to plot properly
 def main():
     props = {
-            'Eal':69e3,
-            'Ecore':200e3,
+            'Eal':70e3,
+            'Ecore':210e3,
             'rw':2.5,'rc':1,
             'layers':[26,7],
-            'T':30641*0.05
+            'T':30641*0.00005
                  }
 
     damageCal = DamageCalculation(wohlerPath='Results1',
@@ -16,23 +16,21 @@ def main():
                               loadPath='Results2', cableProps=props)
 
     print('max vals WohlerC-->')
-    print('logN', damageCal.WohlerC.NMax)
-    print('SMax', damageCal.WohlerC.SMax)
+    print('logN-->', damageCal.WohlerC.NMax)
+    print('SMax-->', damageCal.WohlerC.SMax)
+    print('max vals Loads-->', damageCal.LoadM.maxAmp)
     # damageCal.sample_model('wohler', 2000)
 
     # damageCal.sample_model('loads', 2000)
     # damageCal.WohlerC.samplePosterior()
     # damageCal.WohlerC.plotGP()
-    damageCal.restoreLoadSamples(ndraws=2000)
+    damageCal.restoreLoadSamples(ndraws=20000)
     damageCal.restoreFatigueLifeSamples(maxLoads=20)
     # damageCal.plotFatigueLifeSamples()
     # damageCal.plotLoadSamples()
-    damages = damageCal.calculateDamage_debug()
-
-
-    print('max vals Loads-->')
-    print(damageCal.LoadM.maxAmp)
-
+    # damages = damageCal.calculateDamage_debug()
+    print('Calculating Damage...')
+    damages = damageCal.calculateDamage()
     print(damages)
 
 if __name__=='__main__':
