@@ -50,3 +50,8 @@ def gaoModel_debug(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray, lnN_i)->jnp.DeviceA
     print('outer nNi', nNi)
     return np.asarray(-1/(lnN_i[-1]) * np.log(inner_debug(totalN-1, n_i, N_i, lnN_i)-nNi))
 
+def minerRule(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray,)->jnp.DeviceArray:
+    # n_iS = n_i[n_i<N_i]
+    # N_iS = N_i[n_i<N_i]
+    return jnp.true_divide(n_i, N_i).sum()
+

@@ -10,12 +10,14 @@ import jax
 import json
 
 from typing import Dict, Any, List
-from .damageModelGao import gaoModel_debug, gaoModel
+from .damageModelGao import gaoModel_debug, gaoModel, minerRule
 from .freqModel import LoadModel
 from .models import WohlerCurve
 from .stressModel import CableProps
 
 from jax.config import config
+import matplotlib as mpl
+mpl.rcParams['agg.path.chunksize'] = 10000
 # config.update("jax_debug_nans", True)
 
 def amplitudesToLoads(amplitudes, pf_slope):
@@ -33,11 +35,18 @@ def fillArray(arr:jnp.DeviceArray, num:int=5):
                              jnp.linspace(x.max(), y, num=num))),
                              arr)
 
+def completeArray(arr:jnp.DeviceArray,num):
+    if arr.max()<1:
+        return jnp.hstack((arr, jnp.linspace(arr.max(), 1, num)))
+    else:
+        return arr
+
 def sliceArrs(dct, out):
     masks = [jnp.isclose(dct['arr1'], val) for val in dct['arr2']]
     init = jnp.array([False for _ in masks[0]])
     mask = reduce(lambda x,y: jnp.logical_or(x,y), masks, init)
-    return jnp.transpose(out)[jnp.where(mask, size=out.shape[1],fill_value=-1)]
+    # return jnp.transpose(out)[jnp.where(mask, size=out.shape[1],fill_value=-1)]
+    return jnp.transpose(out)[mask]
     # return jnp.where(mask.flatten(), jnp.transpose(out), -10)
 
 class DamageCalculation:
@@ -113,7 +122,7 @@ class DamageCalculation:
     def sampleFatigueLife(self, maxLoads:int):
 
         print("Sampling Fatigue Life")
-        Xnew = self.SNew[0,:].reshape((-1,1))
+        Xnew = self.SNew.reshape((-1,1))
         with self.WohlerC.SNCurveModel:
             meanN = self.WohlerC.gp_ht.conditional('meanN', Xnew=Xnew)
             sigmaN = self.WohlerC.σ_gp.conditional('sigmaN', Xnew=Xnew)
@@ -129,18 +138,54 @@ class DamageCalculation:
         with open(os.path.join(self.wohlerPath, 'lifeSamples.npz'), 'wb') as file:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
-    def calculateDamage(self):
+    def calculateDamage(self, scaleFactor=10):
 
         cycles = jnp.array(self.cycles)
+        n_cycles = cycles.sum()
+        print(f'Total Cycles: {n_cycles}')
+        cycles *= scaleFactor
+
         Nf = jnp.array(self.Nsamples)
         lnNf = jnp.array(self.slicedTotal)
+
         damageFun = jax.vmap(gaoModel, in_axes=(None,0,0))
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
         self.damages = coolDamageFun(cycles).flatten()
 
         _, ax = plt.subplots(2,1, figsize=(12,8))
-        ax[0].plot(self.damages)
+        ax[0].plot(sorted(self.damages))
 
+        ax[0].set_title('Damage according to Gao Model')
+        nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
+        print(f'NaN Damage Fraction: {nanFrac}')
+        try:
+            counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
+                                         density=True)
+            ax[1].hist(bins[:-1], bins, weights=counts)
+        except Exception as e:
+            print(e)
+
+        plt.savefig(os.path.join(self.wohlerPath, 'damageHist.jpg'))
+        plt.close()
+
+        return self.damages
+
+    def calculateDamageMiner(self):
+
+        cycles = jnp.array(self.cycles)
+        Nf = jnp.array(self.Nsamples)
+        lnNf = jnp.array(self.slicedTotal)
+
+        damageFun = jax.vmap(minerRule, in_axes=(None,0))
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
+        self.damages = coolDamageFun(cycles).flatten()
+
+        nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
+        print(f'NaN Damage Fraction: {nanFrac}')
+
+        _, ax = plt.subplots(2,1, figsize=(12,8))
+        ax[0].plot(self.damages)
+        ax[0].set_title('Damage according to Miners rule')
         try:
             counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
                                          bins=50, density=True)
@@ -152,6 +197,7 @@ class DamageCalculation:
         plt.close()
 
         return self.damages
+
 
     def calculateDamage_debug(self):
 
@@ -201,14 +247,19 @@ class DamageCalculation:
                                          in_axes=({'arr1':0, 'arr2':0},)))
 
         # transposeT = jnp.transpose(self.totalN)
-        dct = {'arr1':self.SNew[0,:], 'arr2':self.amplitudes[0,:]}
+        dct = {'arr1':self.SNew, 'arr2':self.amplitudes[0,:]}
         # self.slicedTotal = sliceArrsvmap(dct)
+
         self.slicedTotal = sliceArrs(dct, self.totalN)
         # self.slicedTotal = reduce(lambda x,y: jnp.vstack((x, jnp.where(y, transposeT, -1))), masks)
+
         self.slicedTotal = jnp.transpose(self.slicedTotal)
         self.totalNNotNorm = self.slicedTotal * self.WohlerC.NMax
 
         self.Nsamples = jax.vmap(jnp.exp, in_axes=(0,))(self.totalNNotNorm)
+
+        print("slicedTotal shape-->",self.slicedTotal.shape)
+        print("Nsamples shape -->",self.Nsamples.shape)
 
     #@profile
     def joinAmplitudesStress(self, maxLoads):
@@ -217,16 +268,20 @@ class DamageCalculation:
         loads = list(self.sample_loads.values())[0]
         vHisto = jax.vmap(lambda x: jnp.histogram(x, bins=maxLoads), in_axes=(1,))
         self.cycles, self.amplitudes = vHisto(loads)
+
         # self.cycles, self.amplitudes = jnp.histogram(loads.flatten(), bins=maxLoads)
         # Transform to amplitudes and then to 0,1 in Wohler Space
+
         self.amplitudes /= self.WohlerC.SMax
+
         # self.cycles = self.cycles[:,0]
         # self.amplitudes = self.amplitudes[:,0]
 
-        vFillArray = jax.jit(jax.vmap(fillArray, in_axes=(0,)))
-        self.SNew = vFillArray(self.amplitudes)
-        vUnique = jax.vmap(lambda x: jnp.unique(x, size=180), in_axes=(0,))
-        self.SNew = vUnique(self.SNew)
+        # vFillArray = jax.jit(jax.vmap(fillArray, in_axes=(0,)))
+        # self.SNew = vFillArray(self.amplitudes)
+        # vUnique = jax.vmap(lambda x: jnp.unique(x, size=180), in_axes=(0,))
+
+        self.SNew = completeArray(self.amplitudes[0,:], num=30)
         print(f'SNew shape: {self.SNew.shape}')
 
     def sample_model(self, model:str, ndraws):
@@ -246,7 +301,7 @@ class DamageCalculation:
         counts, bins = vHisto(loads)
         _,ax = plt.subplots(1,1, figsize=(12,8))
         for i, (count, bin_) in enumerate(zip(counts, bins)):
-            ax.hist(bin_[:-1], bin_, weights=count)
+            ax.hist(bin_[:-1], bin_, weights=count, density=True)
             if i>200:
                 break
         plt.savefig(os.path.join(self.wohlerPath, 'loadSample2.jpg'))
@@ -257,8 +312,8 @@ class DamageCalculation:
         newVar = jax.vmap(jnp.exp, in_axes=(0,))(self.varianceSamples)
         _,ax = plt.subplots(4,1, figsize=(20,14))
 
-        plot_gp_dist(ax[0], self.totalN, self.SNew, palette="bone_r")
-        plot_gp_dist(ax[1], newMean, self.SNew, palette="bone_r")
+        plot_gp_dist(ax[0], self.totalN, self.SNew, palette="autumn")
+        plot_gp_dist(ax[1], newMean, self.SNew, palette="autumn")
         plot_gp_dist(ax[2], newVar, self.SNew)
         plot_gp_dist(ax[3], self.varianceSamples, self.SNew)
 

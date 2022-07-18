@@ -3,11 +3,11 @@ from src.combinedModel import DamageCalculation
 # Re sample posterior to plot properly
 def main():
     props = {
-            'Eal':70e3,
-            'Ecore':210e3,
+            'Eal':69e3,
+            'Ecore':207e3,
             'rw':2.5,'rc':1,
             'layers':[26,7],
-            'T':30641*0.00005
+            'T':30641*0.55
                  }
 
     damageCal = DamageCalculation(wohlerPath='Results1',
@@ -20,17 +20,17 @@ def main():
     print('SMax-->', damageCal.WohlerC.SMax)
     print('max vals Loads-->', damageCal.LoadM.maxAmp)
     # damageCal.sample_model('wohler', 2000)
-
     # damageCal.sample_model('loads', 2000)
-    # damageCal.WohlerC.samplePosterior()
-    # damageCal.WohlerC.plotGP()
-    damageCal.restoreLoadSamples(ndraws=20000)
-    damageCal.restoreFatigueLifeSamples(maxLoads=20)
-    # damageCal.plotFatigueLifeSamples()
+
+    damageCal.restoreLoadSamples(ndraws=45000)
+    damageCal.restoreFatigueLifeSamples(maxLoads=30)
+    damageCal.plotFatigueLifeSamples()
+
     # damageCal.plotLoadSamples()
     # damages = damageCal.calculateDamage_debug()
     print('Calculating Damage...')
-    damages = damageCal.calculateDamage()
+    damages = damageCal.calculateDamage(scaleFactor=10)
+    # damages = damageCal.calculateDamageMiner()
     print(damages)
 
 if __name__=='__main__':
