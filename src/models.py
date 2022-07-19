@@ -90,6 +90,7 @@ class WohlerCurve:
 
         with self.SNCurveModel:
             self.trace = pm.sample_smc(draws=ndraws, parallel=True)
+            # self.trace = pm.sample(draws=ndraws, chains=4, tune=2000, target_accept=0.97)
             if not isinstance(self.trace, az.InferenceData):
                 self.trace = az.convert_to_inference_data(self.trace)
 

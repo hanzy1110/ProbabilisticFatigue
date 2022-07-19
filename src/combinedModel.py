@@ -9,6 +9,9 @@ import jax.numpy as jnp
 import jax
 import json
 
+from matplotlib import colors
+from matplotlib.ticker import PercentFormatter
+
 from typing import Dict, Any, List
 from .damageModelGao import gaoModel_debug, gaoModel, minerRule
 from .freqModel import LoadModel
@@ -18,6 +21,7 @@ from .stressModel import CableProps
 from jax.config import config
 import matplotlib as mpl
 mpl.rcParams['agg.path.chunksize'] = 10000
+plt.style.use(['science', 'ieee'])
 # config.update("jax_debug_nans", True)
 
 def amplitudesToLoads(amplitudes, pf_slope):
@@ -138,6 +142,7 @@ class DamageCalculation:
         with open(os.path.join(self.wohlerPath, 'lifeSamples.npz'), 'wb') as file:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
+    # @profile
     def calculateDamage(self, scaleFactor=10):
 
         cycles = jnp.array(self.cycles)
@@ -152,16 +157,20 @@ class DamageCalculation:
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
         self.damages = coolDamageFun(cycles).flatten()
 
-        _, ax = plt.subplots(2,1, figsize=(12,8))
-        ax[0].plot(sorted(self.damages))
+        _, ax = plt.subplots(1,1, figsize=(12,8))
+        # ax[0].plot(self.damages)
 
-        ax[0].set_title('Damage according to Gao Model')
+        ax.set_title('Damage according to Gao Model')
         nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
         print(f'NaN Damage Fraction: {nanFrac}')
         try:
             counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
-                                         density=True)
-            ax[1].hist(bins[:-1], bins, weights=counts)
+                                         density=True, bins=20)
+            N, bins, conts = ax.hist(bins[:-1], bins, weights=counts)
+            ax.yaxis.set_major_formatter(PercentFormatter(xmax=N.max()))
+            ax.set_ylabel('Percentage Damage')
+            ax.set_xlabel('Damage')
+            # ax.hist(self.damages[~jnp.isnan(self.damages)], density=True, bins=20)
         except Exception as e:
             print(e)
 

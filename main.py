@@ -1,6 +1,8 @@
 from src.combinedModel import DamageCalculation
+import math
 
 # Re sample posterior to plot properly
+# @profile
 def main():
     props = {
             'Eal':69e3,
@@ -22,14 +24,21 @@ def main():
     # damageCal.sample_model('wohler', 2000)
     # damageCal.sample_model('loads', 2000)
 
-    damageCal.restoreLoadSamples(ndraws=45000)
+    damageCal.restoreLoadSamples(ndraws=20000)
     damageCal.restoreFatigueLifeSamples(maxLoads=30)
     damageCal.plotFatigueLifeSamples()
 
     # damageCal.plotLoadSamples()
     # damages = damageCal.calculateDamage_debug()
     print('Calculating Damage...')
-    damages = damageCal.calculateDamage(scaleFactor=10)
+    damages = damageCal.calculateDamage(scaleFactor=500)
+
+    indicator = len(damages[damages>1])
+    p_failure = len(indicator)/len(damages)
+    N_mcs = len(damages)
+    var_coeff = math.sqrt((1-p_failure)/(N_mcs*p_failure))
+    print(f'Probability of failure: {str(p_failure)[:5]}')
+    print(f'Variation Coeff: {str(var_coeff)[:5]}')
     # damages = damageCal.calculateDamageMiner()
     print(damages)
 
