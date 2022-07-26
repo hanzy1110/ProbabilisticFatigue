@@ -2,10 +2,12 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 import pymc3 as pm
 from pymc3.gp.util import plot_gp_dist
 from functools import reduce, partial
 import jax.numpy as jnp
+from jax.scipy import stats
 import jax
 import json
 
@@ -143,11 +145,11 @@ class DamageCalculation:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
     # @profile
-    def calculateDamage(self, scaleFactor=10):
+    def calculateDamage(self, scaleFactor, _iter):
 
         cycles = jnp.array(self.cycles)
-        n_cycles = cycles.sum()
-        print(f'Total Cycles: {n_cycles}')
+        n_cycles = cycles.sum(axis=1)
+        print(f'Total Cycles: {n_cycles.mean() * scaleFactor}')
         cycles *= scaleFactor
 
         Nf = jnp.array(self.Nsamples)
@@ -160,24 +162,28 @@ class DamageCalculation:
         _, ax = plt.subplots(1,1, figsize=(12,8))
         # ax[0].plot(self.damages)
 
-        ax.set_title('Damage according to Gao Model')
+        ax.set_title(f'Damage according to Gao Model at N: {cycles.sum(axis=1)[0]}')
         nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
         print(f'NaN Damage Fraction: {nanFrac}')
-        try:
+        if np.isclose(nanFrac,1, rtol=1e-1):
+            pass
+        else:
             counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
                                          density=True, bins=20)
             N, bins, conts = ax.hist(bins[:-1], bins, weights=counts)
+            # kde = stats.gaussian_kde(self.damages[~jnp.isnan(self.damages)])
+            # dSamps = kde.evaluate(bins)
+            # ax.plot(bins, dSamps)
             ax.yaxis.set_major_formatter(PercentFormatter(xmax=N.max()))
             ax.set_ylabel('Percentage Damage')
             ax.set_xlabel('Damage')
             # ax.hist(self.damages[~jnp.isnan(self.damages)], density=True, bins=20)
-        except Exception as e:
-            print(e)
 
-        plt.savefig(os.path.join(self.wohlerPath, 'damageHist.jpg'))
-        plt.close()
+            plt.savefig(os.path.join(self.wohlerPath, f'damageHist_{_iter}.jpg'))
+            plt.close()
 
-        return self.damages
+            return self.damages
+        return None
 
     def calculateDamageMiner(self):
 
