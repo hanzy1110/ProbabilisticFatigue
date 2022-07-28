@@ -11,6 +11,7 @@ from jax.scipy import stats
 import jax
 import json
 
+from time import perf_counter
 from matplotlib import colors
 from matplotlib.ticker import PercentFormatter
 
@@ -18,7 +19,7 @@ from typing import Dict, Any, List
 from .damageModelGao import gaoModel_debug, gaoModel, minerRule
 from .freqModel import LoadModel
 from .models import WohlerCurve
-from .stressModel import CableProps
+from .stressModel import CableProps, PFSlopeModel
 
 from jax.config import config
 import matplotlib as mpl
@@ -57,8 +58,9 @@ def sliceArrs(dct, out):
 
 class DamageCalculation:
     def __init__(self, wohlerPath:str, loadPath:str,
-                 WohlerObserved:str, loadObserved:str,
-                 cableProps:Dict[str,Any])->None:
+                 WohlerObserved:str, loadObserved:str, PFObserved:str,
+                 cableProps:Dict[str,Any], Tpercentage:int)->None:
+
         #Check units to get the correct value
 
         self.CableProps = CableProps(**cableProps)
@@ -66,7 +68,8 @@ class DamageCalculation:
         self.meanPFSlope = self.CableProps.PFSlope()
 
         print("PFSlope", self.meanPFSlope)
-
+        self.PFSlopeModel = PFSlopeModel(PFObserved, cableProps,
+                                         Tpercentage, wohlerPath)
         self.wohlerPath = wohlerPath
         self.loadPath = loadPath
         self.WohlerC = WohlerCurve(resultsFolder=wohlerPath,
@@ -88,6 +91,7 @@ class DamageCalculation:
     def restoreTraces(self):
         self.traceWohler = self.WohlerC.restoreTrace()
         self.traceLoads = self.LoadM.restoreTrace()
+        self.tracePF = self.PFSlopeModel.restoreTrace()
 
     def restoreFatigueLifeSamples(self, maxLoads):
 
@@ -157,17 +161,18 @@ class DamageCalculation:
 
         damageFun = jax.vmap(gaoModel, in_axes=(None,0,0))
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
+        init = perf_counter()
         self.damages = coolDamageFun(cycles).flatten()
-
+        end = perf_counter()
+        
+        print(f'Time passed: {end-init}')
         _, ax = plt.subplots(1,1, figsize=(12,8))
         # ax[0].plot(self.damages)
 
         ax.set_title(f'Damage according to Gao Model at N: {cycles.sum(axis=1)[0]}')
         nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
         print(f'NaN Damage Fraction: {nanFrac}')
-        if np.isclose(nanFrac,1, rtol=1e-1):
-            pass
-        else:
+        if nanFrac<0.8:
             counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
                                          density=True, bins=20)
             N, bins, conts = ax.hist(bins[:-1], bins, weights=counts)

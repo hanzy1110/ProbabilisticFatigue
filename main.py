@@ -45,6 +45,7 @@ def main():
     for i, scale in enumerate(scaleFactors):
         print('='*30)
         damages = damageCal.calculateDamage(scaleFactor=scale, _iter=i)
+        # damages = damageCal.calculateDamage_debug(scaleFactor=scale, _iter=i)
 
         if isinstance(damages, jnp.DeviceArray):
             indicator = damages[damages>1]
@@ -56,14 +57,17 @@ def main():
                 var_coeff.append(math.sqrt((1-p_failures[-1])/(N_mcs*p_failures[-1])))
             print(f'Probability of failure: {str(p_failures[-1])}')
             print(f'Variation Coeff: {str(var_coeff[-1])}')
+        else:
 
-    _,ax = plt.subplots(figsize=(12,8))
-    ax.plot(ndraws*scaleFactors[:len(p_failures)], p_failures, label=f'Tension:25%RTS')
-    ax.plot(ndraws*scaleFactors[:len(var_coeff)], var_coeff)
-    ax.set_xlabel('Cycles Observed')
-    ax.set_ylabel('Probability of Failure')
-    ax.set_xscale('log')
-    plt.savefig(os.path.join('Results1', 'PFailure.jpg'))
+            _,ax = plt.subplots(figsize=(12,8))
+            ax.plot(ndraws*scaleFactors[:len(p_failures)], p_failures, label=f'Tension:25%RTS')
+            ax.plot(ndraws*scaleFactors[:len(var_coeff)], var_coeff)
+            ax.set_xlabel('Cycles Observed')
+            ax.set_ylabel('Probability of Failure')
+            ax.set_xscale('log')
+            # ax.set_yscale('log')
+            plt.savefig(os.path.join('Results1', 'PFailure.jpg'))
+            return
 
 if __name__=='__main__':
     main()
