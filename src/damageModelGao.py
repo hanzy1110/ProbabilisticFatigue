@@ -10,12 +10,13 @@ def inner(k, n_i:jnp.DeviceArray ,N_i:jnp.DeviceArray, lnN_i)->jnp.float32:
 
     if k == 0:
         exponent = jnp.true_divide(lnN_i[k+1],lnN_i[k])
-        nNi = jnp.minimum(jnp.true_divide(n_i[k]-1,N_i[k]), 1)
+        # nNi = jnp.minimum(jnp.true_divide(n_i[k]-1,N_i[k]), 1)
+        nNi = jnp.true_divide(n_i[k]-1,N_i[k])
         return jnp.asarray(jnp.power(1-nNi,exponent))
 
     else:
         exponent = jnp.true_divide(lnN_i[k+1],lnN_i[k])
-        nNi = jnp.minimum(jnp.true_divide(n_i[k]-1,N_i[k]), 1)
+        nNi = jnp.true_divide(n_i[k]-1,N_i[k])
         return jnp.asarray(jnp.power(inner(k-1, n_i, N_i, lnN_i)-nNi,exponent))
 
 # @profile

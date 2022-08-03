@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from typing import List
 from dataclasses import dataclass
 
-plt.style.use(['science', 'ieee'])
+# plt.style.use(['science', 'ieee'])
 
 @dataclass
 class CableProps:

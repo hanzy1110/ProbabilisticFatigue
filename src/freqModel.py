@@ -10,6 +10,7 @@ from scipy import stats
 from typing import Dict
 import theano.tensor as tt
 import matplotlib.pyplot as plt
+from .stressModel import CableProps
 
 def hist_sample(hist, n):
     """Genertae histogram sample
@@ -22,7 +23,10 @@ def hist_sample(hist, n):
     return np.random.choice(hist[1], size=n, p=hist[0]/sum(hist[0]))
 
 class LoadModel:
-    def __init__(self, resultsFolder:str, observedDataPath:str):
+    def __init__(self, resultsFolder:str, 
+                 observedDataPath:str, 
+                 ydata:str,
+                 cableProps:Dict, Tpercentage:int):
 
         if not os.path.exists(resultsFolder):
             os.makedirs(resultsFolder)
@@ -31,6 +35,10 @@ class LoadModel:
         # data = pd.read_csv(observedDataPath)
         # data.set_index(data['Frequency [Hz]'], inplace=True)
         # data.drop(data.index.values[-1], inplace=True)
+        
+        df = pd.read_csv(ydata)
+        self.ydata = df[df['tension']==Tpercentage] 
+        self.cable = CableProps(**cableProps) 
 
         data = pd.read_csv(observedDataPath)
         cycles = np.array(data.iloc[-1].values[1:], dtype=np.float64)
@@ -57,6 +65,15 @@ class LoadModel:
             beta = pm.HalfNormal('beta', sigma=10)
             self.loads = pm.Weibull('likelihood',alpha=alpha, beta=beta,
                                     observed=self.amplitudes_sample)
+
+            Eal = pm.Normal('Eal', mu = 69e3, sd=4e3)
+            # Ecore = pm.Normal('Ecore', mu = 207e3, sd=4e3)
+            EIMin = pm.Uniform('EIMin', lower=1e-4, upper=1)
+            T = pm.Normal('T', mu=self.cable.T, sigma=self.cable.T/40)
+            self.pfSlope = pm.Deterministic('pfSlope', self.cable.PFSlopeEval(Eal, 1e8*EIMin, T))
+            noise = pm.Gamma('sigma', alpha=1, beta=2)
+            likelihood = pm.Normal('likelihood2', mu=self.pfSlope, sigma=noise, observed=self.ydata)
+
     def sampleModel(self, ndraws):
 
         with self.amplitude_model:
@@ -67,7 +84,6 @@ class LoadModel:
                               # target_accept=0.97,
                               return_inferencedata=True
                               )
-
 
             print(az.summary(self.trace))
             az.plot_trace(self.trace)

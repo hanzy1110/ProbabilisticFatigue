@@ -24,7 +24,7 @@ from .stressModel import CableProps, PFSlopeModel
 from jax.config import config
 import matplotlib as mpl
 mpl.rcParams['agg.path.chunksize'] = 10000
-plt.style.use(['science', 'ieee'])
+# plt.style.use(['science', 'ieee'])
 # config.update("jax_debug_nans", True)
 
 def amplitudesToLoads(amplitudes, pf_slope):
@@ -62,7 +62,7 @@ class DamageCalculation:
                  cableProps:Dict[str,Any], Tpercentage:int)->None:
 
         #Check units to get the correct value
-
+        self.Tpercentage = Tpercentage
         self.CableProps = CableProps(**cableProps)
         self.CableProps.getLambda(cableProps['T'])
         self.meanPFSlope = self.CableProps.PFSlope()
@@ -76,7 +76,8 @@ class DamageCalculation:
                                    observedDataPath=WohlerObserved)
 
         self.LoadM = LoadModel(resultsFolder=loadPath,
-                               observedDataPath=loadObserved,
+                               observedDataPath=loadObserved,Tpercentage=Tpercentage,
+                                ydata=PFObserved, cableProps=cableProps                               
                                )
 
         self.WohlerC.build_HeteroskedasticModel()
@@ -97,7 +98,7 @@ class DamageCalculation:
 
         self.joinAmplitudesStress(maxLoads)
 
-        if os.path.exists(os.path.join(self.wohlerPath, 'lifeSamples.npz')):
+        if os.path.exists(os.path.join(self.wohlerPath, f'lifeSamples_{self.Tpercentage}.npz')):
             self.loadLifeSamples()
         else:
             self.sampleFatigueLife(maxLoads=maxLoads)
@@ -106,29 +107,33 @@ class DamageCalculation:
 
     #@profile
     def restoreLoadSamples(self, ndraws):
-        if os.path.exists(os.path.join(self.loadPath, 'loadSamples.npz')):
+        if os.path.exists(os.path.join(self.loadPath, f'loadSamples_{self.Tpercentage}.npz')):
             self.loadLoadSamples()
         else:
             self.sampleLoads(ndraws=ndraws)
 
     #@profile
     def sampleLoads(self, ndraws):
+
+        self.LoadM.buildMixtureFreqModel()
         print("Sampling Loads")
         maxAmp = self.LoadM.maxAmp * 1e-3 #mum to mm
         with self.LoadM.amplitude_model:
-            pf_slope = pm.Normal('pf_slope', mu=self.meanPFSlope,
-                                 sigma=self.meanPFSlope*self.varCoeff)*maxAmp
+
+            # pf_slope = pm.Normal('pf_slope', mu=self.meanPFSlope,
+            #                      sigma=self.meanPFSlope*self.varCoeff)*maxAmp
             # pf_slope = 1
-            loads = pm.Deterministic('Loads', amplitudesToLoads(self.LoadM.loads,pf_slope))
+            loads = pm.Deterministic('Loads', amplitudesToLoads(self.LoadM.loads, 
+                                                                self.LoadM.pfSlope*maxAmp))
+
             self.sample_loads = pm.sample_posterior_predictive(trace=self.traceLoads,
                                                                var_names=['Loads'],
                                                                samples=ndraws)
         loads = self.sample_loads['Loads']
         print('Load Shapes-->', loads.shape)
-        with open(os.path.join(self.loadPath, 'loadSamples.npz'), 'wb') as file:
+        with open(os.path.join(self.loadPath, f'loadSamples_{self.Tpercentage}.npz'), 'wb') as file:
             np.savez_compressed(file, loads)
 
-        #@profile
     def sampleFatigueLife(self, maxLoads:int):
 
         print("Sampling Fatigue Life")
@@ -145,11 +150,14 @@ class DamageCalculation:
         print(meanSamples.shape)
         print(varianceSamples.shape)
 
-        with open(os.path.join(self.wohlerPath, 'lifeSamples.npz'), 'wb') as file:
+        with open(os.path.join(self.wohlerPath, f'lifeSamples_{self.Tpercentage}.npz'), 'wb') as file:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
     # @profile
-    def calculateDamage(self, scaleFactor, _iter):
+    def calculateDamage(self, scaleFactor, _iter, plot:bool=False):
+
+        print('=/'*30)
+        print('Damage According to Gao')
 
         cycles = jnp.array(self.cycles)
         n_cycles = cycles.sum(axis=1)
@@ -161,63 +169,80 @@ class DamageCalculation:
 
         damageFun = jax.vmap(gaoModel, in_axes=(None,0,0))
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
+
         init = perf_counter()
         self.damages = coolDamageFun(cycles).flatten()
         end = perf_counter()
         
         print(f'Time passed: {end-init}')
-        _, ax = plt.subplots(1,1, figsize=(12,8))
         # ax[0].plot(self.damages)
 
-        ax.set_title(f'Damage according to Gao Model at N: {cycles.sum(axis=1)[0]}')
         nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
         print(f'NaN Damage Fraction: {nanFrac}')
-        if nanFrac<0.8:
+        if nanFrac<0.5:
             counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
-                                         density=True, bins=20)
-            N, bins, conts = ax.hist(bins[:-1], bins, weights=counts)
+                                         density=True)
             # kde = stats.gaussian_kde(self.damages[~jnp.isnan(self.damages)])
             # dSamps = kde.evaluate(bins)
             # ax.plot(bins, dSamps)
-            ax.yaxis.set_major_formatter(PercentFormatter(xmax=N.max()))
-            ax.set_ylabel('Percentage Damage')
-            ax.set_xlabel('Damage')
-            # ax.hist(self.damages[~jnp.isnan(self.damages)], density=True, bins=20)
+            if plot:
+                fig, ax = plt.subplots(1,1, figsize=(12,8))
+                N, bins, conts = ax.hist(bins[:-1], bins, weights=counts)
+                ax.set_title(f'Damage according to Gao Model at N: {cycles.sum(axis=1)[0]}')
+                ax.yaxis.set_major_formatter(PercentFormatter(xmax=N.max()))
+                ax.set_ylabel('Percentage Damage')
+                ax.set_xlabel('Damage')
+                # ax.hist(self.damages[~jnp.isnan(self.damages)], density=True, bins=20)
 
-            plt.savefig(os.path.join(self.wohlerPath, f'damageHist_{_iter}.jpg'))
-            plt.close()
+                plt.savefig(os.path.join(self.wohlerPath, f'damageHist_{_iter}.jpg'))
+                plt.close(fig)
 
             return self.damages
         return None
 
-    def calculateDamageMiner(self):
+    def calculateDamageMiner(self,scaleFactor, _iter, plot=False):
+
+        print('=/'*30)
+        print('Damage According to Miner')
 
         cycles = jnp.array(self.cycles)
-        Nf = jnp.array(self.Nsamples)
-        lnNf = jnp.array(self.slicedTotal)
+        Nf = jnp.array(self.Nsamples)[...,:-2]
+
+        n_cycles = cycles.sum(axis=1)
+        print(f'Total Cycles: {n_cycles.mean() * scaleFactor}')
+        cycles *= scaleFactor
 
         damageFun = jax.vmap(minerRule, in_axes=(None,0))
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
+
+        init = perf_counter()
         self.damages = coolDamageFun(cycles).flatten()
+        end = perf_counter()
+
+        print(f'Time passed: {end-init}')
 
         nanFrac = len(self.damages[jnp.isnan(self.damages)])/len(self.damages)
         print(f'NaN Damage Fraction: {nanFrac}')
 
-        _, ax = plt.subplots(2,1, figsize=(12,8))
-        ax[0].plot(self.damages)
-        ax[0].set_title('Damage according to Miners rule')
-        try:
-            counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
-                                         bins=50, density=True)
-            ax[1].hist(bins[:-1], bins, weights=counts)
-        except Exception as e:
-            print(e)
+        if nanFrac < 0.5:
 
-        plt.savefig(os.path.join(self.wohlerPath, 'damageHist.jpg'))
-        plt.close()
+            if plot:
 
-        return self.damages
+                fig, ax = plt.subplots(2,1, figsize=(12,8))
+                ax[0].plot(self.damages)
+                ax[0].set_title('Damage according to Miners rule')
+                try:
+                    counts, bins = jnp.histogram(self.damages[jnp.where(~jnp.isnan(self.damages))],
+                                                 bins=50, density=True)
+                    ax[1].hist(bins[:-1], bins, weights=counts)
+                except Exception as e:
+                    print(e)
 
+                plt.savefig(os.path.join(self.wohlerPath, 'damageHistMiner.jpg'))
+                plt.close(fig)
+            return self.damages
+
+        return None
 
     def calculateDamage_debug(self):
 
@@ -332,8 +357,8 @@ class DamageCalculation:
         newVar = jax.vmap(jnp.exp, in_axes=(0,))(self.varianceSamples)
         _,ax = plt.subplots(4,1, figsize=(20,14))
 
-        plot_gp_dist(ax[0], self.totalN, self.SNew, palette="autumn")
-        plot_gp_dist(ax[1], newMean, self.SNew, palette="autumn")
+        plot_gp_dist(ax[0], self.totalN, self.SNew, palette="bone_r")
+        plot_gp_dist(ax[1], newMean, self.SNew, palette="bone_r")
         plot_gp_dist(ax[2], newVar, self.SNew)
         plot_gp_dist(ax[3], self.varianceSamples, self.SNew)
 
