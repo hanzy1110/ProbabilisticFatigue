@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import List
-from jax import jit, vmap, lax
+from jax import jit, vmap, lax, Array
 from functools import partial, reduce
 import jax.numpy as jnp
 
 @partial(jit, static_argnums=0)
-def inner(k, n_i:jnp.DeviceArray ,N_i:jnp.DeviceArray, lnN_i)->jnp.float32:
+def inner(k, n_i:Array ,N_i:Array, lnN_i)->jnp.float32:
 
     if k == 0:
         exponent = jnp.true_divide(lnN_i[k+1],lnN_i[k])
@@ -20,13 +20,13 @@ def inner(k, n_i:jnp.DeviceArray ,N_i:jnp.DeviceArray, lnN_i)->jnp.float32:
         return jnp.asarray(jnp.power(inner(k-1, n_i, N_i, lnN_i)-nNi,exponent))
 
 # @profile
-def gaoModel(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray, lnN_i)->jnp.DeviceArray:
+def gaoModel(n_i:Array, N_i:Array, lnN_i)->Array:
     totalN = len(n_i)-1
     # inner_ = vmap(inner, in_axes=(None, None, 0))
     nNi = jnp.true_divide(n_i[-1],N_i[-1])
     return jnp.asarray(-1/(lnN_i[-1]) * jnp.log(inner(totalN-1, n_i, N_i, lnN_i)-nNi))
 
-def inner_debug(k, n_i:jnp.DeviceArray ,N_i:jnp.DeviceArray, lnN_i)->jnp.float32:
+def inner_debug(k, n_i:Array ,N_i:Array, lnN_i)->jnp.float32:
 
     if k == 0:
         # exponent = np.true_divide(np.log(N_i[k+1]),np.log(N_i[k]))
@@ -44,7 +44,7 @@ def inner_debug(k, n_i:jnp.DeviceArray ,N_i:jnp.DeviceArray, lnN_i)->jnp.float32
         print('exponent->', exponent)
         return np.power(inner_debug(k-1, n_i, N_i, lnN_i)-nNi,exponent)
 
-def gaoModel_debug(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray, lnN_i)->jnp.DeviceArray:
+def gaoModel_debug(n_i:Array, N_i:Array, lnN_i)->Array:
     totalN = len(n_i)-1
     # inner_ = vmap(inner, in_axes=(None, None, 0))
 
@@ -52,7 +52,7 @@ def gaoModel_debug(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray, lnN_i)->jnp.DeviceA
     print('outer nNi', nNi)
     return np.asarray(-1/(lnN_i[-1]) * np.log(inner_debug(totalN-1, n_i, N_i, lnN_i)-nNi))
 
-def minerRule(n_i:jnp.DeviceArray, N_i:jnp.DeviceArray,)->jnp.DeviceArray:
+def minerRule(n_i:Array, N_i:Array,)->Array:
     # n_iS = n_i[n_i<N_i]
     # N_iS = N_i[n_i<N_i]
     return jnp.true_divide(n_i, N_i).sum()

@@ -1,6 +1,7 @@
 import os
 import seaborn as sns
-import pymc3 as pm
+import pymc as pm
+import nutpie
 import arviz as az
 import numpy as np
 import pandas as pd
@@ -48,10 +49,10 @@ class PFSlopeModel:
         df = pd.read_csv(ydata)
         self.ydata = df[df['tension']==Tpercentage] 
         self.cable = CableProps(**cableParams) 
-        self.resultsFolder = resultPath    
+        self.results_folder = resultPath
 
     def restoreTrace(self):
-        path = os.path.join(self.resultsFolder, 'PFtrace.nc')
+        path = self.results_folder/ 'PF_TRACE.nc'
         if os.path.exists(path):
             self.trace = az.from_netcdf(filename=path)
         else:
@@ -70,22 +71,28 @@ class PFSlopeModel:
     def sampleModel(self, ndraws):
         self.build_model()
 
+        compiled_model = nutpie.compile_pymc_model(self.model)
+        self.trace = nutpie.sample(compiled_model, draws=1000, tune=200, chains=3)
+        az.to_netcdf(data=trace, filename=self.results_folder / "PF_TRACE.nc")
+
         with self.model:
-            self.trace = pm.sample(draws = ndraws, tune=2000, return_inferencedata=True)
+            # self.trace = pm.sample(draws = ndraws, tune=2000, return_inferencedata=True)
             summ = az.summary(self.trace)
             az.plot_trace(self.trace)
-            plt.savefig(os.path.join(self.resultsFolder, 'pfTraceplot.jpg'))
+            plt.savefig(self.results_folder/ 'PF_TRACEPLOT.jpg')
             az.plot_posterior(self.trace)
             self.postSamples = pm.sample_posterior_predictive(self.trace, var_names=['pfSlope'])
         
-        _,ax = plt.subplots(1,1,figsize=(12,8))
+        fig, ax = plt.subplots(1,1)
+        fig.set_size_inches(3.3, 3.3)
+
         ax.hist(self.postSamples['pfSlope'], density=True, label='Infered Data')
         sns.kdeplot(self.postSamples['pfSlope'], ax=ax) 
         plt.hist(self.ydata, density=True, label='Experimental Data')
         ax.legend()
         ax.set_xlabel(r'\text{Poffemberger \& Swart Slope}')
-        plt.savefig(os.path.join(self.resultsFolder, 'pfSlope.jpg'))
+        plt.savefig(self.results_folder/ 'PF_KDEPLOT.jpg')
 
         print(summ)
         az.to_netcdf(data=self.trace,
-                     filename=os.path.join(self.resultsFolder, 'PFtrace.nc'))
+                     filename=os.path.join(self.results_folder, 'PFtrace.nc'))

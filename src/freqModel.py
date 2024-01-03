@@ -1,6 +1,7 @@
-#%%
 import os
-import pymc3 as pm
+import pathlib
+import pymc as pm
+import nutpie
 import arviz as az
 import pandas as pd
 import numpy as np
@@ -8,7 +9,6 @@ import seaborn as sns
 from scipy import stats
 
 from typing import Dict
-import theano.tensor as tt
 import matplotlib.pyplot as plt
 from .stressModel import CableProps
 
@@ -23,15 +23,15 @@ def hist_sample(hist, n):
     return np.random.choice(hist[1], size=n, p=hist[0]/sum(hist[0]))
 
 class LoadModel:
-    def __init__(self, resultsFolder:str, 
-                 observedDataPath:str, 
-                 ydata:str,
+    def __init__(self, resultsFolder:pathlib.Path,
+                 observedDataPath:pathlib.Path,
+                 ydata:pathlib.Path,
                  cableProps:Dict, Tpercentage:int):
 
         if not os.path.exists(resultsFolder):
             os.makedirs(resultsFolder)
 
-        self.resultsFolder = resultsFolder
+        self.results_folder = resultsFolder
         # data = pd.read_csv(observedDataPath)
         # data.set_index(data['Frequency [Hz]'], inplace=True)
         # data.drop(data.index.values[-1], inplace=True)
@@ -48,11 +48,12 @@ class LoadModel:
     def NormalizeData(self, plotExp:bool=True):
 
         # frequency = np.array(data['Frequency [Hz]'].values, dtype=np.float64).reshape(-1,1 )
-        _,ax = plt.subplots(1,1, sharex=False, figsize=(10,8))
+        fig, ax = plt.subplots(1,1, sharex=False, figsize=(10,8))
+        fig.set_size_inches(3.3, 3.3)
         ax.hist(self.amplitudes_sample)
         ax.set_xlabel('Amplitudes')
         ax.set_ylabel('Density')
-        plt.savefig(os.path.join(self.resultsFolder, 'expData.jpg'))
+        plt.savefig(self.results_folder / 'LOAD_EXP_DATA.png', dpi=600)
         plt.close()
         self.maxAmp = self.amplitudes_sample.max()
         self.amplitudes_sample = np.array(self.amplitudes_sample, dtype=np.float64)/self.maxAmp
@@ -66,7 +67,7 @@ class LoadModel:
             self.loads = pm.Weibull('likelihood',alpha=alpha, beta=beta,
                                     observed=self.amplitudes_sample)
 
-            Eal = pm.Normal('Eal', mu = 69e3, sd=4e3)
+            Eal = pm.Normal('Eal', mu = 69e3, sigma=4e3)
             # Ecore = pm.Normal('Ecore', mu = 207e3, sd=4e3)
             EIMin = pm.Uniform('EIMin', lower=1e-4, upper=1)
             T = pm.Normal('T', mu=self.cable.T, sigma=self.cable.T/40)
@@ -76,27 +77,25 @@ class LoadModel:
 
     def sampleModel(self, ndraws):
 
+        compiled_model = nutpie.compile_pymc_model(self.amplitude_model)
+        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=2000, chains=4)
+        az.to_netcdf(data=trace, filename= self.results_folder / "AMPLITUDE_TRACE.nc")
+
         with self.amplitude_model:
 
-            self.trace = pm.sample(draws=ndraws,
-                              chains=3,
-                              tune=3000,
-                              # target_accept=0.97,
-                              return_inferencedata=True
-                              )
+            # self.trace = pm.sample(draws=ndraws,
+            #                   chains=3,
+            #                   tune=3000,
+            #                   # target_accept=0.97,
+            #                   return_inferencedata=True
+            #                   )
 
             print(az.summary(self.trace))
             az.plot_trace(self.trace)
-            plt.savefig(os.path.join(self.resultsFolder, 'traceplot.jpg'))
+            plt.savefig(self.results_folder/ 'AMPLITUDE_TRACEPLOT.jpg')
             plt.close()
             az.plot_posterior(self.trace)
-
-            az.to_netcdf(self.trace,
-                         filename=os.path.join(self.resultsFolder, 'trace.nc'))
-
-            # df = pm.backends.tracetab.trace_to_dataframe(self.trace)
-            # df.to_csv(os.path.join(self.resultsFolder, 'trace.csv'))
-            plt.savefig(os.path.join(self.resultsFolder, 'posteriorArviz.jpg'))
+            plt.savefig(self.results_folder/ 'AMPLITUDE_POSTERIOR.jpg')
             plt.close()
 
     def samplePosterior(self):
@@ -104,16 +103,17 @@ class LoadModel:
         with self.amplitude_model:
             samples = pm.sample_posterior_predictive(self.trace, var_names=['likelihood'])
 
-        _,ax = plt.subplots(1,1, sharex=False, figsize=(12,5))
+        fig, ax = plt.subplots(1,1, sharex=False, figsize=(12,5))
+        fig.set_size_inches(3.3, 3.3)
         ax.hist(self.amplitudes_sample, density=True)
         sns.kdeplot(samples['likelihood'].flatten(), ax=ax, label='Inference')
 
         plt.legend()
-        plt.savefig(os.path.join(self.resultsFolder, 'posterior.jpg'))
+        plt.savefig(self.results_folder/ 'posterior.jpg', dpi=600)
         plt.close()
 
     def restoreTrace(self):
-        path = os.path.join(self.resultsFolder, 'trace.nc')
+        path = self.results_folder/ 'AMPLITUDE_TRACE.nc'
 
         if os.path.exists(path):
             self.trace = az.from_netcdf(filename=path)

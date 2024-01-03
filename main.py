@@ -1,20 +1,48 @@
+#!/home/blueman69/miniforge3/envs/fem_gp/bin/python
+
 import os
+import pathlib
 import pprint
 import math
 import numpy as np
+import pytensor
+import arviz as az
 import jax.numpy as jnp
+from jax import Array, devices
 import matplotlib.pyplot as plt
 # plt.style.use(['science', 'ieee'])
 from src.combinedModel import DamageCalculation
 
+print(f"Running on: {devices()}")
+
+# os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count={}".format(
+#     jax.device_count()
+# )
+BASE_PATH = pathlib.Path(__file__).parent
+DATA_DIR = BASE_PATH / "data"
+RESULTS_FOLDER = BASE_PATH / "RESULTS"
+PLOT_DIR = BASE_PATH / "plots"
+NDRAWS = 2000
+N_HIDDEN = 100
+
+floatX = pytensor.config.floatX
+RANDOM_SEED = 9927
+rng = np.random.default_rng(RANDOM_SEED)
+az.style.use("arviz-darkgrid")
+
 printer = pprint.PrettyPrinter(5, compact=True)
 
-def getPFailure(damages:jnp.DeviceArray):
+def getPFailure(damages:Array):
     return len(damages[damages>1])/len(damages)
 
 def getVarCoeff(p_failures, N_mcs):
     return math.sqrt((1-p_failures)/(N_mcs*p_failures))
 
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".75"
+os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
 # Re sample posterior to plot properly
 # @profile
 def main(T):
@@ -33,11 +61,11 @@ def main(T):
             'T':97.4*1000*T/100
                  }
 
-    damageCal = DamageCalculation(wohlerPath='Results1',
-                              loadObserved='data/800369.csv',
-                              WohlerObserved='data/SN_curve.mat',
-                              loadPath='Results2', cableProps=props,
-                              PFObserved='data/pfData.csv', 
+    damageCal = DamageCalculation(wohlerPath=RESULTS_FOLDER / 'WOHLER',
+                              loadObserved=DATA_DIR / '800369.csv',
+                              WohlerObserved=DATA_DIR / 'SN_curve.mat',
+                              loadPath=RESULTS_FOLDER / 'LOADS', cableProps=props,
+                              PFObserved=DATA_DIR / 'pfData.csv',
                               Tpercentage=T)
 
     print('max vals WohlerC-->')
@@ -64,7 +92,7 @@ def main(T):
         damagesMiner = damageCal.calculateDamageMiner(scaleFactor=scale, _iter=i)
         # damages = damageCal.calculateDamage_debug(scaleFactor=scale, _iter=i)
 
-        if isinstance(damagesGao, jnp.DeviceArray):
+        if isinstance(damagesGao, Array):
             # indicator = damagesGao[damagesGao>1]
 
             vals['Gao']['pFailures'].append(getPFailure(damagesGao))
