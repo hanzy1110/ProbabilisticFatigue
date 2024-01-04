@@ -12,6 +12,7 @@ from jax import Array, devices
 import matplotlib.pyplot as plt
 # plt.style.use(['science', 'ieee'])
 from src.combinedModel import DamageCalculation
+from src.freqModel import total_cycles_per_year
 
 print(f"Running on: {devices()}")
 
@@ -75,30 +76,34 @@ def main(T):
     # damageCal.sample_model('wohler', 2000)
     # damageCal.sample_model('loads', 2000)
 
-    ndraws = 45000
-    damageCal.restoreLoadSamples(ndraws=ndraws)
-    damageCal.restoreFatigueLifeSamples(maxLoads=30)
+    CYCLING_HOURS = 500
+    N_YEARS = 40
+    N_DISTINCT_LOADS = 32
+
+    cycles_per_year = total_cycles_per_year(CYCLING_HOURS,N_YEARS, DATA_DIR/"800369.csv")
+
+    damageCal.restoreLoadSamples(ndraws=cycles_per_year[0])
+    damageCal.restoreFatigueLifeSamples(maxLoads=N_DISTINCT_LOADS)
     damageCal.plotFatigueLifeSamples()
 
     # damageCal.plotLoadSamples()
     # damages = damageCal.calculateDamage_debug()
-    print('Calculating Damage...')
+    print('Starting Damage Calculation...')
     vals = {'Miner':{'pFailures':[], 'varCoeff':[]}, 
             'Gao':{'pFailures':[], 'varCoeff':[]}}
 
-    for i, scale in enumerate(scaleFactors):
+    for i, cycles in enumerate(cycles_per_year):
+        # Here we would reload the samples according to a distinct process but ok
         print('='*30)
-        damagesGao = damageCal.calculateDamage(scaleFactor=scale, _iter=i)
-        damagesMiner = damageCal.calculateDamageMiner(scaleFactor=scale, _iter=i)
+        damages_aeran = damageCal.calculateDamage(_iter=i)
+        damages_miner = damageCal.calculateDamageMiner(_iter=i)
         # damages = damageCal.calculateDamage_debug(scaleFactor=scale, _iter=i)
 
-        if isinstance(damagesGao, Array):
-            # indicator = damagesGao[damagesGao>1]
+        if isinstance(damages_aeran, Array):
+            vals['Gao']['pFailures'].append(getPFailure(damages_aeran))
+            vals['Miner']['pFailures'].append(getPFailure(damages_miner))
 
-            vals['Gao']['pFailures'].append(getPFailure(damagesGao))
-            vals['Miner']['pFailures'].append(getPFailure(damagesMiner))
-
-            N_mcs = len(damagesGao)
+            N_mcs = len(damages_aeran)
             if np.isclose(vals['Gao']['pFailures'][-1], 0) or np.isclose(vals['Miner']['pFailures'][-1], 0):
                 vals['Gao']['varCoeff'].append(0)
                 vals['Miner']['varCoeff'].append(0)

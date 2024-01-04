@@ -12,6 +12,9 @@ from typing import Dict
 import matplotlib.pyplot as plt
 from .stressModel import CableProps
 
+RANDOM_SEED = 8927
+rng = np.random.default_rng(RANDOM_SEED)
+
 def hist_sample(hist, n):
     """Genertae histogram sample
     Args:
@@ -21,6 +24,35 @@ def hist_sample(hist, n):
         [list]: list with samples
     """
     return np.random.choice(hist[1], size=n, p=hist[0]/sum(hist[0]))
+
+def get_freq_density(freq, data):
+    cycles = np.array(data.loc[data['Frequency [Hz]'] == freq], dtype=np.float64)
+    return cycles.sum()
+
+def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
+    data = pd.read_csv(freq_data)
+    # data['Frequency [Hz]'] = np.array(data['Frequency [Hz]'].values, dtype=np.int64)
+    data.set_index(data['Frequency [Hz]'], inplace=True)
+    data.drop(data.index.values[-1], inplace=True)
+
+    freq_prev = np.array(data['Frequency [Hz]'].values)
+    frequency_density = np.fromiter(map(lambda x: get_freq_density(x, data=data), freq_prev), dtype=np.float64)
+    frequency = hist_sample([frequency_density, freq_prev], n=10000)
+
+    return frequency
+
+def total_cycles_per_year(cycling_hours, n_years, freq_data, ls=0.2, tau=2.0):
+
+    mean_freq = calculate_freq_dist(freq_data).mean()
+    n_mean = cycling_hours * mean_freq * 3600
+    return n_mean * np.ones_like(np.arange(n_years))
+    # Use the follwing when modelling random amounts:
+    # cov = tau * pm.gp.cov.Matern52(1, ls)
+    # X = np.linspace(0, n_years, n_years)[:, None]
+    # K = cov(X).eval()
+    # mu = n_mean * np.ones(len(K))
+    # cycles = pm.draw(pm.MvNormal.dist(mu=mu, cov=K, shape=len(K)), draws=3, random_seed=rng).T
+
 
 class LoadModel:
     def __init__(self, resultsFolder:pathlib.Path,
@@ -78,7 +110,7 @@ class LoadModel:
     def sampleModel(self, ndraws):
 
         compiled_model = nutpie.compile_pymc_model(self.amplitude_model)
-        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=2000, chains=4)
+        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=1000, chains=4)
         az.to_netcdf(data=trace, filename= self.results_folder / "AMPLITUDE_TRACE.nc")
 
         with self.amplitude_model:

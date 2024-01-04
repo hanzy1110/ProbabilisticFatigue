@@ -62,31 +62,31 @@ class WohlerCurve:
         self.NormalizeData(plotExp=True)
         S = self.S.reshape((-1,1))
 
-        ℓ_μ, ℓ_σ = [stat for stat in get_ℓ_prior(self.S)]
+        l_mu, l_sigma = [stat for stat in get_ℓ_prior(self.S)]
 
         with pm.Model() as self.SNCurveModel:
-            ℓ = pm.Gamma("ℓ", mu=ℓ_μ, sigma=ℓ_σ)
-            η = pm.Gamma("η", alpha=2, beta=1)
+            l_scale = pm.Gamma(r"$l_scale$", mu=l_mu, sigma=l_sigma)
+            eta = pm.Gamma(r"$\eta$", alpha=2, beta=1)
 
             # x0 = pm.Gamma("x0", alpha=2, beta=1)
             # a = pm.Gamma("a", alpha=2, beta=1)
             # c = pm.Gamma("c", alpha=2, beta=1)
 
             # cov_base = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
-            cov = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
+            cov = eta ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=l_scale) + pm.gp.cov.WhiteNoise(sigma=1e-6)
             # cov = pm.gp.cov.ScaledCov(1, scaling_func=logistic, args=(a, x0, c), cov_func=cov_base)
 
             self.gp_ht = pm.gp.Latent(cov_func=cov)
-            mu_f = self.gp_ht.prior("mu_f", X=S)
-            μ_f  = pm.Deterministic('μ_f', pm.math.log1pexp(mu_f))
-            σ_ℓ = pm.Gamma("σ_ℓ", mu=ℓ_μ, sigma=ℓ_σ)
-            σ_η = pm.Gamma("σ_η", alpha=2, beta=1)
+            mu_f = self.gp_ht.prior(r"\mu_f", X=S)
+            μ_f  = pm.Deterministic(r"\mu_f_transformed", pm.math.log1pexp(mu_f))
+            σ_ℓ = pm.Gamma(r"\sigma_l", mu=l_mu, sigma=l_sigma)
+            σ_η = pm.Gamma(r"\sigma_{\eta}", alpha=2, beta=1)
 
             σ_cov = σ_η ** 2 * pm.gp.cov.ExpQuad(input_dim=1, ls=σ_ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
 
             self.σ_gp = pm.gp.Latent(cov_func=σ_cov)
-            σ_f = self.σ_gp.prior("lg_σ_f", X=S)
-            σ_f = pm.Deterministic("σ_f", pm.math.exp(σ_f))
+            σ_f = self.σ_gp.prior("lg_sigma_f", X=S)
+            σ_f = pm.Deterministic("sigma_f", pm.math.exp(σ_f))
 
             nu = pm.Gamma("nu", alpha=2, beta=1)
             lik_ht = pm.StudentT("lik_ht",nu=nu,  mu=μ_f, sigma=σ_f, observed=self.log_N)
@@ -98,8 +98,8 @@ class WohlerCurve:
             # self.trace = pm.sample(draws=ndraws, chains=4, tune=2000, target_accept=0.97)
 
         compiled_model = nutpie.compile_pymc_model(self.SNCurveModel)
-        trace = nutpie.sample(compiled_model, draws=ndraws, tune=2000, chains=4)
-        az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "SN_MODEL_TRACE.nc")
+        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=1000, chains=4)
+        az.to_netcdf(data=self.trace, filename= self.results_folder / "SN_MODEL_TRACE.nc")
         # if not isinstance(self.trace, az.InferenceData):
         #     self.trace = az.convert_to_inference_data(self.trace)
             # self.trace = pm.sample()
@@ -110,11 +110,6 @@ class WohlerCurve:
         plt.savefig(os.path.join(self.results_folder,'SN_MODEL_TRACEPLOT.jpg'))
         plt.close()
 
-        # df = pm.backends.tracetab.trace_to_dataframe(self.trace)
-        # az.to_netcdf(data=self.trace,
-        #              filename=os.path.join(self.resultsFolder, 'trace.nc'))
-        # df = self.trace.to_dataframe()
-        # df.to_csv(os.path.join(self.resultsFolder, 'trace.csv'))
 
     def samplePosterior(self):
 
@@ -187,5 +182,5 @@ class WohlerCurve:
         if os.path.exists(path):
             self.trace = az.from_netcdf(filename=path)
         else:
-            self.sampleModel(2000)
+            self.sampleModel(1000)
         return self.trace

@@ -19,6 +19,7 @@ from matplotlib.ticker import PercentFormatter
 
 from typing import Dict, Any, List
 from .damageModelGao import gaoModel_debug, gaoModel, minerRule
+from .aeran_model import aeran_model
 from .freqModel import LoadModel
 from .models import WohlerCurve
 from .stressModel import CableProps, PFSlopeModel
@@ -146,6 +147,7 @@ class DamageCalculation:
             # pf_slope = pm.Normal('pf_slope', mu=self.meanPFSlope,
             #                      sigma=self.meanPFSlope*self.varCoeff)*maxAmp
             # pf_slope = 1
+            # pfSlope * maxAmp transforms it from normalized to sigma
             loads = pm.Deterministic(
                 "Loads",
                 amplitudesToLoads(self.LoadM.loads, self.LoadM.pfSlope * maxAmp),
@@ -184,20 +186,24 @@ class DamageCalculation:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
     # @profile
-    def calculateDamage(self, scaleFactor, _iter, plot: bool = False):
+    def calculate_damage(self, _iter, plot: bool = False):
         print("=/" * 30)
         print("Damage According to Gao")
 
         cycles = jnp.array(self.cycles)
         n_cycles = cycles.sum(axis=1)
-        print(f"Total Cycles: {n_cycles.mean() * scaleFactor}")
-        cycles *= scaleFactor
+        print(f"Total Cycles: {n_cycles.mean()}")
+        # Here we should change this to the new method based on total vibrations per year
+        # cycles *= scaleFactor
 
         Nf = jnp.array(self.Nsamples)
         lnNf = jnp.array(self.slicedTotal)
+        # Maybe, slice this to the original sampled loads
+        sigma_i = self.SNew
 
-        damageFun = jax.vmap(gaoModel, in_axes=(None, 0, 0))
-        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf), in_axes=(0,))
+        # damageFun = jax.vmap(gaoModel, in_axes=(None, 0, 0))
+        damageFun = jax.vmap(aeran_model, in_axes=(None, 0, 0, 0))
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf, sigma_i), in_axes=(0,))
 
         init = perf_counter()
         self.damages = coolDamageFun(cycles).flatten()
@@ -232,7 +238,7 @@ class DamageCalculation:
             return self.damages
         return None
 
-    def calculateDamageMiner(self, scaleFactor, _iter, plot=False):
+    def calculateDamageMiner(self, _iter, plot=False):
         print("=/" * 30)
         print("Damage According to Miner")
 
@@ -240,8 +246,7 @@ class DamageCalculation:
         Nf = jnp.array(self.Nsamples)[..., :-2]
 
         n_cycles = cycles.sum(axis=1)
-        print(f"Total Cycles: {n_cycles.mean() * scaleFactor}")
-        cycles *= scaleFactor
+        print(f"Total Cycles: {n_cycles.mean()}")
 
         damageFun = jax.vmap(minerRule, in_axes=(None, 0))
         coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
@@ -360,6 +365,7 @@ class DamageCalculation:
         # self.SNew = vFillArray(self.amplitudes)
         # vUnique = jax.vmap(lambda x: jnp.unique(x, size=180), in_axes=(0,))
 
+        # Why was this necessary
         self.SNew = completeArray(self.amplitudes[0, :], num=30)
         print(f"SNew shape: {self.SNew.shape}")
 
