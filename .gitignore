@@ -9,7 +9,9 @@ oldScripts/*
 Results1/*
 Results2/*
 cleansed_csvs/
-
+RESULTS/
+data/
+oldScripts/
 # Distribution / packaging
 .Python
 build/
