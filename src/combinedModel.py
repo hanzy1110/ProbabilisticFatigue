@@ -28,6 +28,7 @@ from jax.config import config
 import matplotlib as mpl
 
 import scienceplots
+
 plt.style.use(["science", "ieee"])
 
 mpl.rcParams["agg.path.chunksize"] = 10000
@@ -158,9 +159,7 @@ class DamageCalculation:
             )
         loads = self.sample_loads["Loads"]
         print("Load Shapes-->", loads.shape)
-        with open(
-            self.loadPath/ f"loadSamples_{self.Tpercentage}.npz", "wb"
-        ) as file:
+        with open(self.loadPath / f"loadSamples_{self.Tpercentage}.npz", "wb") as file:
             np.savez_compressed(file, loads)
 
     def sampleFatigueLife(self, maxLoads: int):
@@ -188,7 +187,7 @@ class DamageCalculation:
     # @profile
     def calculate_damage(self, _iter, plot: bool = False):
         print("=/" * 30)
-        print("Damage According to Gao")
+        print("Damage According to Aeran")
 
         cycles = jnp.array(self.cycles)
         n_cycles = cycles.sum(axis=1)
@@ -199,11 +198,14 @@ class DamageCalculation:
         Nf = jnp.array(self.Nsamples)
         lnNf = jnp.array(self.slicedTotal)
         # Maybe, slice this to the original sampled loads
-        sigma_i = self.SNew
+        # Here be size troubles
+        sigma_i = self.amplitudes
 
         # damageFun = jax.vmap(gaoModel, in_axes=(None, 0, 0))
         damageFun = jax.vmap(aeran_model, in_axes=(None, 0, 0, 0))
-        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, lnNf, sigma_i), in_axes=(0,))
+        coolDamageFun = jax.vmap(
+            lambda x: damageFun(x, Nf, lnNf, sigma_i), in_axes=(0,)
+        )
 
         init = perf_counter()
         self.damages = coolDamageFun(cycles).flatten()
@@ -238,7 +240,7 @@ class DamageCalculation:
             return self.damages
         return None
 
-    def calculateDamageMiner(self, _iter, plot=False):
+    def calculate_damage_miner(self, _iter, plot=False):
         print("=/" * 30)
         print("Damage According to Miner")
 
@@ -275,7 +277,7 @@ class DamageCalculation:
                 except Exception as e:
                     print(e)
 
-                plt.savefig(self.wohler_path/ "damageHistMiner.jpg", dpi=600)
+                plt.savefig(self.wohler_path / "damageHistMiner.jpg", dpi=600)
                 plt.close(fig)
             return self.damages
 
@@ -423,5 +425,5 @@ class DamageCalculation:
         ax.set_xlabel("Loads [Sampled]")
         ax.set_ylabel("Density")
 
-        plt.savefig(self.wohler_path/ "loadSamples.jpg", dpi=600)
+        plt.savefig(self.wohler_path / "loadSamples.jpg", dpi=600)
         plt.close()

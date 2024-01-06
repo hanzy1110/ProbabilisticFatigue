@@ -95,8 +95,8 @@ def main(T):
     for i, cycles in enumerate(cycles_per_year):
         # Here we would reload the samples according to a distinct process but ok
         print('='*30)
-        damages_aeran = damageCal.calculateDamage(_iter=i)
-        damages_miner = damageCal.calculateDamageMiner(_iter=i)
+        damages_aeran = damageCal.calculate_damage(_iter=i)
+        damages_miner = damageCal.calculate_damage_miner(_iter=i)
         # damages = damageCal.calculateDamage_debug(scaleFactor=scale, _iter=i)
 
         if isinstance(damages_aeran, Array):
