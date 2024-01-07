@@ -42,14 +42,18 @@ def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
     frequency_density = np.fromiter(
         map(lambda x: get_freq_density(x, data=data), freq_prev), dtype=np.float64
     )
+    print(f"freq_prev: {freq_prev}")
+    print(f"frequency_density: {frequency_density}")
+    freq_prev = np.array(freq_prev, dtype=np.float64)
     frequency = hist_sample([frequency_density, freq_prev], n=10000)
 
     return frequency
 
 
 def total_cycles_per_year(cycling_hours, n_years, freq_data, ls=0.2, tau=2.0):
-    mean_freq = calculate_freq_dist(freq_data).mean()
-    n_mean = cycling_hours * mean_freq * 3600
+    freq = calculate_freq_dist(freq_data)
+    print(f"frequency => {freq}")
+    n_mean = cycling_hours * freq.mean() * 3600
     return n_mean * np.ones_like(np.arange(n_years))
     # Use the follwing when modelling random amounts:
     # cov = tau * pm.gp.cov.Matern52(1, ls)

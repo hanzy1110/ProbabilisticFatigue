@@ -155,7 +155,7 @@ class DamageCalculation:
             )
 
             self.sample_loads = pm.sample_posterior_predictive(
-                trace=self.traceLoads, var_names=["Loads"], samples=ndraws
+                trace=self.traceLoads, var_names=["Loads"]
             )
         loads = self.sample_loads["Loads"]
         print("Load Shapes-->", loads.shape)
