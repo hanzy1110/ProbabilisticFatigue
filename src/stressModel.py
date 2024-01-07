@@ -103,6 +103,8 @@ class PFSlopeModel:
         fig, ax = plt.subplots(1, 1)
         fig.set_size_inches(3.3, 3.3)
 
+        self.postSamples = self.postSamples.posterior_predictive
+
         ax.hist(self.postSamples["pfSlope"], density=True, label="Infered Data")
         sns.kdeplot(self.postSamples["pfSlope"], ax=ax)
         plt.hist(self.ydata, density=True, label="Experimental Data")

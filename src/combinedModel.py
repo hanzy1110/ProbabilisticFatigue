@@ -157,14 +157,14 @@ class DamageCalculation:
             self.sample_loads = pm.sample_posterior_predictive(
                 trace=self.traceLoads, var_names=["Loads"]
             )
-        loads = self.sample_loads["Loads"]
+        loads = self.sample_loads.posterior_predictive["Loads"]
         print("Load Shapes-->", loads.shape)
         with open(self.loadPath / f"loadSamples_{self.Tpercentage}.npz", "wb") as file:
             np.savez_compressed(file, loads)
 
     def sampleFatigueLife(self, maxLoads: int):
-        print("Sampling Fatigue Life")
-        Xnew = self.SNew.reshape((-1, 1))
+        print(f"Sampling Fatigue Life, maxLoads {maxLoads}")
+        Xnew = np.array(self.SNew.reshape((-1, 1)))
         with self.WohlerC.SNCurveModel:
             meanN = self.WohlerC.gp_ht.conditional("meanN", Xnew=Xnew)
             sigmaN = self.WohlerC.σ_gp.conditional("sigmaN", Xnew=Xnew)
@@ -173,8 +173,8 @@ class DamageCalculation:
                 self.traceWohler, var_names=["meanN", "sigmaN"]
             )
 
-        meanSamples = self.samples["meanN"]
-        varianceSamples = self.samples["sigmaN"]
+        meanSamples = self.samples.posterior_predictive["meanN"]
+        varianceSamples = self.samples.posterior_predictive["sigmaN"]
         print("shapes-->")
         print(meanSamples.shape)
         print(varianceSamples.shape)
@@ -305,12 +305,14 @@ class DamageCalculation:
         return self.damages
 
     def loadLifeSamples(self):
-        with open(os.path.join(self.wohler_path, "lifeSamples.npz"), "rb") as file:
+
+        with open(os.path.join(self.wohler_path, f"lifeSamples_{self.Tpercentage}.npz"), "rb") as file:
             samples = np.load(file, allow_pickle=True)
             self.samples = {key: jnp.array(val) for key, val in samples.items()}
 
     def loadLoadSamples(self):
-        with open(os.path.join(self.loadPath, "loadSamples.npz"), "rb") as file:
+
+        with open(os.path.join(self.loadPath, f"loadSamples_{self.Tpercentage}.npz"), "rb") as file:
             samples = np.load(file, allow_pickle=True)
             self.sample_loads = {key: jnp.array(val) for key, val in samples.items()}
 
@@ -318,27 +320,26 @@ class DamageCalculation:
     def transformGPs(self):
         print("Transforming GPs")
         meanSamps, varSamps = list(self.samples.values())
-        self.meanSamples = jnp.array(meanSamps)
+        self.meanSamples = jnp.array(meanSamps).mean(axis=0)
 
-        self.varianceSamples = jnp.array(varSamps)
+        self.varianceSamples = jnp.array(varSamps).mean(axis=0)
         self.totalN = jax.vmap(log1exp, in_axes=(0,))(self.meanSamples)
 
         print("meanSamples shape-->", self.meanSamples.shape)
         print("Total N shape-->", self.totalN.shape)
 
-        sliceArrsvmap = jax.jit(
-            jax.vmap(
-                lambda dct: sliceArrs(dct, self.totalN),
-                in_axes=({"arr1": 0, "arr2": 0},),
-            )
-        )
+        # sliceArrsvmap = jax.jit(
+        #     jax.vmap(
+        #         lambda dct: sliceArrs(dct, self.totalN),
+        #         in_axes=({"arr1": 0, "arr2": 0},),
+        #     )
+        # )
 
         # transposeT = jnp.transpose(self.totalN)
         dct = {"arr1": self.SNew, "arr2": self.amplitudes[0, :]}
         # self.slicedTotal = sliceArrsvmap(dct)
 
         self.slicedTotal = sliceArrs(dct, self.totalN)
-        # self.slicedTotal = reduce(lambda x,y: jnp.vstack((x, jnp.where(y, transposeT, -1))), masks)
 
         self.slicedTotal = jnp.transpose(self.slicedTotal)
         self.totalNNotNorm = self.slicedTotal * self.WohlerC.NMax
@@ -351,7 +352,8 @@ class DamageCalculation:
     # @profile
     def joinAmplitudesStress(self, maxLoads):
         print("Join amplitude and stress...")
-        loads = list(self.sample_loads.values())[0]
+        loads = list(self.sample_loads.values())[0].mean(axis=0)
+        # loads = self.sample_loads.posterior_predictive.mean("chain")["Loads"]
         vHisto = jax.vmap(lambda x: jnp.histogram(x, bins=maxLoads), in_axes=(1,))
         self.cycles, self.amplitudes = vHisto(loads)
 
