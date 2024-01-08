@@ -48,7 +48,8 @@ class WohlerCurve:
 
         self.SMax = self.S.max()
         self.S /= self.SMax
-        self.SNew = np.linspace(self.S.min(), self.S.max(), 100)[:, None]
+        # self.SNew = np.linspace(self.S.min(), self.S.max(), 100)[:, None]
+        self.SNew = self.S.reshape(-1,1)
 
         if plotExp:
             _, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -104,7 +105,7 @@ class WohlerCurve:
 
         print("Sampling WOHLER MODEL")
         compiled_model = nutpie.compile_pymc_model(self.SNCurveModel)
-        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=1000, chains=4)
+        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=500, chains=2)
         az.to_netcdf(
             data=self.trace, filename=self.results_folder / "SN_MODEL_TRACE.nc"
         )
@@ -129,13 +130,16 @@ class WohlerCurve:
                 trace=self.trace, var_names=["NNew", "log_σ_f_pred"]
             )
 
-        try:
-            y_samples = {key: val.tolist() for key, val in y_samples.items()}
-        except Exception as e:
-            print(e)
+        # try:
+        #     y_samples = {key: val.tolist() for key, val in y_samples.items()}
+        # except Exception as e:
+        #     print(e)
 
-        with open(self.results_folder / "SN_SAMPLES.json", "w") as file:
-            json.dump(y_samples, file)
+        az.to_netcdf(
+            data=y_samples, filename=self.results_folder / "SN_SAMPLES.nc"
+        )
+        # with open(self.results_folder / "SN_SAMPLES.json", "w") as file:
+        #     json.dump(y_samples, file)
 
     def plotGP(
         self,
@@ -203,5 +207,5 @@ class WohlerCurve:
         if os.path.exists(path):
             self.trace = az.from_netcdf(filename=path)
         else:
-            self.sampleModel(1000)
+            self.sampleModel(500)
         return self.trace

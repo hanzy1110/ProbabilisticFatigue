@@ -2,8 +2,8 @@
 
 import os
 import pathlib
-import re
 import pprint
+import math
 import numpy as np
 import pytensor
 import arviz as az
@@ -11,7 +11,6 @@ import jax.numpy as jnp
 from jax import Array, devices
 import matplotlib.pyplot as plt
 # plt.style.use(['science', 'ieee'])
-import fire
 from src.combinedModel import DamageCalculation
 from src.freqModel import total_cycles_per_year
 
@@ -23,11 +22,8 @@ BASE_PATH = pathlib.Path(__file__).parent
 DATA_DIR = BASE_PATH / "data"
 RESULTS_FOLDER = BASE_PATH / "RESULTS"
 PLOT_DIR = BASE_PATH / "plots"
-
-LOAD_PATH = RESULTS_FOLDER / "LOADS"
-CYCLING_HOURS = 500
-N_YEARS = 40
-N_DISTINCT_LOADS = 32
+NDRAWS = 2000
+N_HIDDEN = 100
 
 floatX = pytensor.config.floatX
 RANDOM_SEED = 9927
@@ -40,44 +36,12 @@ def getPFailure(damages:Array):
     return len(damages[damages>1])/len(damages)
 
 def getVarCoeff(p_failures, N_mcs):
-    return np.sqrt((1-p_failures)/(N_mcs*p_failures))
-
-def delete_files_by_regex(folder_path, regex_pattern):
-    try:
-        # Check if the provided folder path exists
-        if not os.path.exists(folder_path):
-            print(f"Folder '{folder_path}' does not exist.")
-            return
-
-        # List all files in the folder
-        files = os.listdir(folder_path)
-
-        # Compile the regex pattern
-        pattern = re.compile(regex_pattern)
-
-        # Iterate through files and delete those matching the regex pattern
-        for file_name in files:
-            if pattern.match(file_name):
-                file_path = os.path.join(folder_path, file_name)
-                os.remove(file_path)
-                print(f"Deleted: {file_path}")
-
-        print("Deletion completed.")
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    return math.sqrt((1-p_failures)/(N_mcs*p_failures))
 
 
 # Re sample posterior to plot properly
 # @profile
-def main(T:int, delete_files: bool = False):
-
-    # print(T)
-    # T = int(T[0])
-    file_pattern = r'tot_damages.*.npz'
-
-    if delete_files:
-        delete_files_by_regex(LOAD_PATH, file_pattern)
+def main(T):
 
 
     # os.environ['CUDA_VISIBLE_DEVICES'] = ''
@@ -113,6 +77,9 @@ def main(T:int, delete_files: bool = False):
     # damageCal.sample_model('wohler', 2000)
     # damageCal.sample_model('loads', 2000)
 
+    CYCLING_HOURS = 500
+    N_YEARS = 40
+    N_DISTINCT_LOADS = 32
 
     cycles_per_year = total_cycles_per_year(CYCLING_HOURS,N_YEARS, DATA_DIR/"800369.csv")
 
@@ -122,52 +89,54 @@ def main(T:int, delete_files: bool = False):
     damageCal.restoreFatigueLifeSamples(maxLoads=N_DISTINCT_LOADS)
     damageCal.plotFatigueLifeSamples()
 
+    # damageCal.plotLoadSamples()
+    # damages = damageCal.calculateDamage_debug()
     print('Starting Damage Calculation...')
+    vals = {'Miner':{'pFailures':[], 'varCoeff':[]}, 
+            'Gao':{'pFailures':[], 'varCoeff':[]}}
 
-    if not os.path.exists(LOAD_PATH / f"tot_damages_{0}.npz"):
-        nbatches = damageCal.calculate_damage(cycles_per_year=cycles_per_year[0], _iter=0)
-    else:
-        nbatches = 100
+    for i, cycles in enumerate(cycles_per_year):
+        # Here we would reload the samples according to a distinct process but ok
+        print('='*30)
+        damages_aeran = damageCal.calculate_damage(cycles_per_year=cycles, _iter=i)
+        damages_miner = damageCal.calculate_damage_miner(cycles_per_year=cycles, _iter=i)
+        # damages = damageCal.calculateDamage_debug(scaleFactor=scale, _iter=i)
 
-    vals = {"pFailures": [], "varCoeff": []}
+        if isinstance(damages_aeran, Array):
+            vals['Gao']['pFailures'].append(getPFailure(damages_aeran))
+            vals['Miner']['pFailures'].append(getPFailure(damages_miner))
 
-
-    for i in range(nbatches):
-
-        print(f"BATCH NUMBER : {i}")
-
-        try:
-            with open(LOAD_PATH / f"tot_damages_{i}.npz", "rb") as file:
-                samples = np.load(file, allow_pickle=True)
-                # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}
-                # damages_aeran = jnp.array(samples['arr_0'])
-                damages_aeran = samples['arr_0']
-
-            vals['pFailures'].append(getPFailure(damages_aeran))
             N_mcs = len(damages_aeran)
-            if np.isclose(vals['pFailures'][-1], 0):
-                vals['varCoeff'].append(0)
+            if np.isclose(vals['Gao']['pFailures'][-1], 0) or np.isclose(vals['Miner']['pFailures'][-1], 0):
+                vals['Gao']['varCoeff'].append(0)
+                vals['Miner']['varCoeff'].append(0)
             else:
-                vals['varCoeff'].append(getVarCoeff(vals['pFailures'][-1], N_mcs))
-        except Exception as e:
-            print(e)
-            return vals, nbatches
+                vals['Miner']['varCoeff'].append(getVarCoeff(vals['Miner']['pFailures'][-1], N_mcs))
+                vals['Gao']['varCoeff'].append(getVarCoeff(vals['Gao']['pFailures'][-1], N_mcs))
 
-    fig, ax = plt.subplots(1,1)
-    fig.set_size_inches(4.4, 4.4)
+            printer.pprint(vals)
+            # print(f'Probability of failure: {str(p_failures[-1])}')
+            # print(f'Variation Coeff: {str(var_coeff[-1])}')
+        else:
+            return vals, scaleFactors, cycles_per_year[0]
 
-    p_failures = vals['pFailures']
-    var_coeff = vals['varCoeff']
-    ax.plot(range(nbatches)[:len(p_failures)], p_failures, label=f'Aeran Model at Tension:{T}%RTS')
+if __name__=='__main__':
+    T = 20
+    _,ax = plt.subplots(figsize=(12,8))
+
+    vals, scaleFactors, ndraws = main(T)
+    for model, values in vals.items():
+        p_failures = values['pFailures']
+        var_coeff = values['varCoeff']
+        ax.plot(ndraws*scaleFactors[:len(p_failures)], p_failures, label=f'{model} Model at Tension:{T}%RTS')
         # ax.plot(ndraws*scaleFactors[:len(var_coeff)], var_coeff)
     ax.set_xlabel('Cycles Observed')
     ax.set_ylabel('Probability of Failure')
     ax.set_xscale('log')
     ax.legend()
-    plt.savefig(RESULTS_FOLDER / "p_failure.png", dpi=600)
-    plt.close()
-
-if __name__=='__main__':
-    # T = 20
         # ax.set_yscale('log')
-    fire.Fire(main)
+        
+plt.savefig(os.path.join('Results1', 'PFailure.jpg'))
+plt.close()
+
+
