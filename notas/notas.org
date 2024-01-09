@@ -1,0 +1,62 @@
+#+title: Calculo de la Probabilidad de falla en Conductores ACSR
+
+* Motivación
+Por que es importante conocer la probabilidad de falla en los Conductores ACSR
+
+* Detalle del proceso de fatiga en conductores eléctricos.
++ Que constituye la falla por fatiga.
+  + Modelo de Poffenberger & Swart
+  + Mas antecedentes del trabajo de fatiga en conductores
++ Como es el proceso de falla en los conductores
++ Consecuencias de las fallas por fatiga
+
+* Conceptos del proceso de fatiga
+** Fatiga deterministica. Conceptos clave
+** Fatiga estocástica. Conceptos, requisitos
+  + Cargas aleatorias => Conteo de ciclos
+  + Propiedades aleatorias => Curvas de Wohler
+** Calculo de la probabilidad de falla
+    + Mechar con la teoría del polaco
+
+* Confiabilidad
++ Que es la Confiabilidad
++ Confiabilidad en relación a los modelos físicos
+  + Mechar con el proyecto de investigacion
++ La relación de la confiabilidad con el fenómeno de fatiga
++ El daño acumulado como medida de la confiabilidad
+** Estimación del daño
++ Modelado del proceso de fatiga
+  + Tipo de carga
++ Distintas técnicas para el modelado del daño acumulado
+  + Regla de Miner
+  + Modelo de Aeran
++ Tengo una familia de modelos
+
+* Fuentes de incerteza y formas de estimarla:
+** Curva de Wohler:
+  + Fuentes de incerteza experimental
+  + Problemas al ensayar conductores.
+  + Problemas de la variancia variable.
+  + Calculo de modelo probabilístico Heterocedastico
+** Proceso de carga:
+  + Mediciones en campo
+  + Conteo de ciclos (Funcionamiento del Vibrec)
+  + Modelo probabilístico para la distribución de las amplitudes de oscilación
+** Calculo de los esfuerzos:
+ + Incerteza en el modelado del esfuerzo de fatiga
+ + Formas de solucionar el problema
+ + Tratamiento estadístico de la estimación de los esfuerzos por flexión.
+ + Uso de la inferencia Bayesiana para estimar la incerteza del modelo
+
+* Modelado del proceso de fatiga para el calculo de la probabilidad de falla
+** Objetivos:
++ Estudiar la evolución de la probabilidad de falla a partir de mediciones iniciales
++ Estudiar un proceso de fatiga anual a partir de las mediciones del campo
++ Extrapolar el proceso a lo largo del periodo estimado.
+** Implementación
++ Sampleo de los posibles fenómenos de fatiga a partir de las distribuciones calculadas para amplitud y esfuerzo
+  + Obtener cargas y cantidades de ciclos a una determinada carga
+  + La distribución del daño viene de calcular un gran numero de procesos de fatiga distintos y a partir de eso estimar el daño
++ Sampleo de la vida a la fatiga en función de las cargas obtenidas
++ Combinación de los tres elementos en el modelo de danio
++ Obtención de la probabilidad de falla a partir de las distribuciones anuales y la transferencia del daño entre años

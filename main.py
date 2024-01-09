@@ -177,6 +177,8 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     var_coeff = vals["varCoeff"]
     ax[0].hist(p_failures, label="Probability of failure")
     ax[1].hist(tot_damages, density=True, bins=100, label="Aeran Damages")
+    print(f"DAMAGES MEAN => {tot_damages.mean()}")
+    print(f"DAMAGES SD => {tot_damages.sd()}")
     # ax[0].set_xlabel("Probability of Failure")
 
     ax[0].legend()

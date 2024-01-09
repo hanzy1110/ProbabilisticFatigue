@@ -1,0 +1,130 @@
+% Created 2024-01-09 mar 15:30
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{bm69}
+\date{\today}
+\title{Calculo de la Probabilidad de falla en Conductores ACSR}
+\hypersetup{
+ pdfauthor={bm69},
+ pdftitle={Calculo de la Probabilidad de falla en Conductores ACSR},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 27.1 (Org mode 9.7)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Motivación}
+\label{sec:org7ad283e}
+Por que es importante conocer la probabilidad de falla en los Conductores ACSR
+\section{Detalle del proceso de fatiga en conductores eléctricos.}
+\label{sec:org696e3d5}
+\begin{itemize}
+\item Que constituye la falla por fatiga.
+\begin{itemize}
+\item Modelo de Poffenberger \& Swart
+\item Mas antecedentes del trabajo de fatiga en conductores
+\end{itemize}
+\item Como es el proceso de falla en los conductores
+\item Consecuencias de las fallas por fatiga
+\end{itemize}
+\section{Conceptos del proceso de fatiga}
+\label{sec:orgf971f1f}
+\subsection{Fatiga deterministica. Conceptos clave}
+\label{sec:org27b104f}
+\subsection{Fatiga estocástica. Conceptos, requisitos}
+\label{sec:orgb54aa2d}
+\begin{itemize}
+\item Cargas aleatorias => Conteo de ciclos
+\item Propiedades aleatorias => Curvas de Wohler
+\end{itemize}
+\subsection{Calculo de la probabilidad de falla}
+\label{sec:org4f1d813}
+\begin{itemize}
+\item Mechar con la teoría del polaco
+\end{itemize}
+\section{Confiabilidad}
+\label{sec:org8749d57}
+\begin{itemize}
+\item Que es la Confiabilidad
+\item Confiabilidad en relación a los modelos físicos
+\begin{itemize}
+\item Mechar con el proyecto de investigacion
+\end{itemize}
+\item La relación de la confiabilidad con el fenómeno de fatiga
+\item El daño acumulado como medida de la confiabilidad
+\end{itemize}
+\subsection{Estimación del daño}
+\label{sec:org14a3beb}
+\begin{itemize}
+\item Modelado del proceso de fatiga
+\begin{itemize}
+\item Tipo de carga
+\end{itemize}
+\item Distintas técnicas para el modelado del daño acumulado
+\begin{itemize}
+\item Regla de Miner
+\item Modelo de Aeran
+\end{itemize}
+\item Tengo una familia de modelos
+\end{itemize}
+\section{Fuentes de incerteza y formas de estimarla:}
+\label{sec:org1197d19}
+\subsection{Curva de Wohler:}
+\label{sec:orgbff497f}
+\begin{itemize}
+\item Fuentes de incerteza experimental
+\item Problemas al ensayar conductores.
+\item Problemas de la variancia variable.
+\item Calculo de modelo probabilístico Heterocedastico
+\end{itemize}
+\subsection{Proceso de carga:}
+\label{sec:org785c917}
+\begin{itemize}
+\item Mediciones en campo
+\item Conteo de ciclos (Funcionamiento del Vibrec)
+\item Modelo probabilístico para la distribución de las amplitudes de oscilación
+\end{itemize}
+\subsection{Calculo de los esfuerzos:}
+\label{sec:orgb6ff10a}
+\begin{itemize}
+\item Incerteza en el modelado del esfuerzo de fatiga
+\item Formas de solucionar el problema
+\item Tratamiento estadístico de la estimación de los esfuerzos por flexión.
+\item Uso de la inferencia Bayesiana para estimar la incerteza del modelo
+\end{itemize}
+\section{Modelado del proceso de fatiga para el calculo de la probabilidad de falla}
+\label{sec:orgbf8c7d1}
+\subsection{Objetivos:}
+\label{sec:org44fc1a9}
+\begin{itemize}
+\item Estudiar la evolución de la probabilidad de falla a partir de mediciones iniciales
+\item Estudiar un proceso de fatiga anual a partir de las mediciones del campo
+\item Extrapolar el proceso a lo largo del periodo estimado.
+\end{itemize}
+\subsection{Implementación}
+\label{sec:org0ea036e}
+\begin{itemize}
+\item Sampleo de los posibles fenómenos de fatiga a partir de las distribuciones calculadas para amplitud y esfuerzo
+\begin{itemize}
+\item Obtener cargas y cantidades de ciclos a una determinada carga
+\item La distribución del daño viene de calcular un gran numero de procesos de fatiga distintos y a partir de eso estimar el daño
+\end{itemize}
+\item Sampleo de la vida a la fatiga en función de las cargas obtenidas
+\item Combinación de los tres elementos en el modelo de danio
+\item Obtención de la probabilidad de falla a partir de las distribuciones anuales y la transferencia del daño entre años
+\end{itemize}
+\end{document}
