@@ -10,6 +10,7 @@ import arviz as az
 import jax.numpy as jnp
 from jax import Array, devices
 import matplotlib.pyplot as plt
+
 # plt.style.use(['science', 'ieee'])
 import fire
 from src.combinedModel import DamageCalculation
@@ -36,11 +37,14 @@ az.style.use("arviz-darkgrid")
 
 printer = pprint.PrettyPrinter(5, compact=True)
 
-def getPFailure(damages:Array):
-    return len(damages[damages>1])/len(damages)
+
+def getPFailure(damages: Array):
+    return len(damages[damages > 1]) / len(damages)
+
 
 def getVarCoeff(p_failures, N_mcs):
-    return np.sqrt((1-p_failures)/(N_mcs*p_failures))
+    return np.sqrt((1 - p_failures) / (N_mcs * p_failures))
+
 
 def delete_files_by_regex(folder_path, regex_pattern):
     try:
@@ -70,51 +74,54 @@ def delete_files_by_regex(folder_path, regex_pattern):
 
 # Re sample posterior to plot properly
 # @profile
-def main(T:int, delete_files: bool = False):
-
+def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = False):
     # print(T)
     # T = int(T[0])
-    file_pattern = r'tot_damages.*.npz'
+    file_pattern = r"tot_damages.*.npz"
 
     if delete_files:
         delete_files_by_regex(LOAD_PATH, file_pattern)
 
-
     # os.environ['CUDA_VISIBLE_DEVICES'] = ''
     # os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".99"
-    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
+    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".99"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
     print(f"Running on: {devices()}")
     scaleFactors = np.arange(10, 10000, 100)
 
-    print('-x'*30)
-    print(f'T:{T}')
+    print("-x" * 30)
+    print(f"T:{T}")
     props = {
-            'Eal':69e3,
-            'Ecore':207e3,
-            'rw':2.5,'rc':1,
-            'layers':[26,7],
-            # 'T':30641*0.15
-            'T':97.4*1000*T/100
-                 }
+        "Eal": 69e3,
+        "Ecore": 207e3,
+        "rw": 2.5,
+        "rc": 1,
+        "layers": [26, 7],
+        # 'T':30641*0.15
+        "T": 97.4 * 1000 * T / 100,
+    }
 
-    damageCal = DamageCalculation(wohlerPath=RESULTS_FOLDER / 'WOHLER',
-                              loadObserved=DATA_DIR / '800369.csv',
-                              WohlerObserved=DATA_DIR / 'SN_curve.mat',
-                              loadPath=RESULTS_FOLDER / 'LOADS', cableProps=props,
-                              PFObserved=DATA_DIR / 'pfData.csv',
-                              Tpercentage=T)
+    damageCal = DamageCalculation(
+        wohlerPath=RESULTS_FOLDER / "WOHLER",
+        loadObserved=DATA_DIR / "800369.csv",
+        WohlerObserved=DATA_DIR / "SN_curve.mat",
+        loadPath=RESULTS_FOLDER / "LOADS",
+        cableProps=props,
+        PFObserved=DATA_DIR / "pfData.csv",
+        Tpercentage=T,
+    )
 
-    damageCal.restoreTraces()
-    print('max vals WohlerC-->')
-    print('logN-->', damageCal.WohlerC.NMax)
-    print('SMax-->', damageCal.WohlerC.SMax)
-    print('max vals Loads-->', damageCal.LoadM.maxAmp)
+    damageCal.restoreTraces(ndraws_wohler=ndraws_wohler)
+    print("max vals WohlerC-->")
+    print("logN-->", damageCal.WohlerC.NMax)
+    print("SMax-->", damageCal.WohlerC.SMax)
+    print("max vals Loads-->", damageCal.LoadM.maxAmp)
     # damageCal.sample_model('wohler', 2000)
     # damageCal.sample_model('loads', 2000)
 
-
-    cycles_per_year = total_cycles_per_year(CYCLING_HOURS,N_YEARS, DATA_DIR/"800369.csv")
+    cycles_per_year = total_cycles_per_year(
+        CYCLING_HOURS, N_YEARS, DATA_DIR / "800369.csv"
+    )
 
     print(f"CYCLES PER YEAR {cycles_per_year[0]}")
 
@@ -122,52 +129,63 @@ def main(T:int, delete_files: bool = False):
     damageCal.restoreFatigueLifeSamples(maxLoads=N_DISTINCT_LOADS)
     damageCal.plotFatigueLifeSamples()
 
-    print('Starting Damage Calculation...')
-
-    if not os.path.exists(LOAD_PATH / f"tot_damages_{0}.npz"):
-        nbatches = damageCal.calculate_damage(cycles_per_year=cycles_per_year[0], _iter=0)
-    else:
-        nbatches = 100
-
+    print("Starting Damage Calculation...")
     vals = {"pFailures": [], "varCoeff": []}
 
+    if debug:
+        damages_aeran = damageCal.calculate_damage_debug(cycles_per_year[0])
+        print(damages_aeran)
 
-    for i in range(nbatches):
+    else:
+        if not os.path.exists(LOAD_PATH / f"tot_damages_{0}.npz"):
+            nbatches = damageCal.calculate_damage(
+                cycles_per_year=cycles_per_year[0], _iter=0
+            )
+        else:
+            nbatches = 100
 
-        print(f"BATCH NUMBER : {i}")
+        vals = {"pFailures": [], "varCoeff": []}
 
-        try:
-            with open(LOAD_PATH / f"tot_damages_{i}.npz", "rb") as file:
-                samples = np.load(file, allow_pickle=True)
-                # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}
-                # damages_aeran = jnp.array(samples['arr_0'])
-                damages_aeran = samples['arr_0']
+        tot_damages = None
+        for i in range(nbatches):
+            print(f"BATCH NUMBER : {i}")
 
-            vals['pFailures'].append(getPFailure(damages_aeran))
-            N_mcs = len(damages_aeran)
-            if np.isclose(vals['pFailures'][-1], 0):
-                vals['varCoeff'].append(0)
-            else:
-                vals['varCoeff'].append(getVarCoeff(vals['pFailures'][-1], N_mcs))
-        except Exception as e:
-            print(e)
-            return vals, nbatches
+            try:
+                with open(LOAD_PATH / f"tot_damages_{i}.npz", "rb") as file:
+                    samples = np.load(file, allow_pickle=True)
+                    # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}
+                    # damages_aeran = jnp.array(samples['arr_0'])
+                    damages_aeran = samples["arr_0"]
+                    if tot_damages is not None:
+                        tot_damages = np.hstack([tot_damages, damages_aeran])
+                    else:
+                        tot_damages = damages_aeran
 
-    fig, ax = plt.subplots(1,1)
-    fig.set_size_inches(4.4, 4.4)
+                vals["pFailures"].append(getPFailure(damages_aeran))
+                N_mcs = len(damages_aeran)
+                if np.isclose(vals["pFailures"][-1], 0):
+                    vals["varCoeff"].append(0)
+                else:
+                    vals["varCoeff"].append(getVarCoeff(vals["pFailures"][-1], N_mcs))
+            except Exception as e:
+                print(e)
 
-    p_failures = vals['pFailures']
-    var_coeff = vals['varCoeff']
-    ax.plot(range(nbatches)[:len(p_failures)], p_failures, label=f'Aeran Model at Tension:{T}%RTS')
-        # ax.plot(ndraws*scaleFactors[:len(var_coeff)], var_coeff)
-    ax.set_xlabel('Cycles Observed')
-    ax.set_ylabel('Probability of Failure')
-    ax.set_xscale('log')
-    ax.legend()
+    fig, ax = plt.subplots(1, 2)
+    fig.set_size_inches(6.3, 6.3)
+
+    p_failures = vals["pFailures"]
+    var_coeff = vals["varCoeff"]
+    ax[0].hist(p_failures, label="Probability of failure")
+    ax[1].hist(tot_damages, density=True, bins=100, label="Aeran Damages")
+    # ax[0].set_xlabel("Probability of Failure")
+
+    ax[0].legend()
+    ax[1].legend()
     plt.savefig(RESULTS_FOLDER / "p_failure.png", dpi=600)
     plt.close()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     # T = 20
-        # ax.set_yscale('log')
+    # ax.set_yscale('log')
     fire.Fire(main)

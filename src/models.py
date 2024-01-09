@@ -48,8 +48,8 @@ class WohlerCurve:
 
         self.SMax = self.S.max()
         self.S /= self.SMax
-        # self.SNew = np.linspace(self.S.min(), self.S.max(), 100)[:, None]
-        self.SNew = self.S.reshape(-1,1)
+        self.SNew = np.linspace(self.S.min(), self.S.max(), 100)[:, None]
+        # self.SNew = self.S.reshape(-1, 1)
 
         if plotExp:
             _, ax = plt.subplots(1, 1, figsize=(12, 8))
@@ -69,15 +69,9 @@ class WohlerCurve:
             l_scale = pm.Gamma(r"$l_{scale}$", mu=l_mu, sigma=l_sigma)
             eta = pm.Gamma(r"$\eta$", alpha=2, beta=1)
 
-            # x0 = pm.Gamma("x0", alpha=2, beta=1)
-            # a = pm.Gamma("a", alpha=2, beta=1)
-            # c = pm.Gamma("c", alpha=2, beta=1)
-
-            # cov_base = η ** 2 * pm.gp.cov.Exponential(input_dim=1, ls=ℓ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
             cov = eta**2 * pm.gp.cov.Exponential(
                 input_dim=1, ls=l_scale
             ) + pm.gp.cov.WhiteNoise(sigma=1e-6)
-            # cov = pm.gp.cov.ScaledCov(1, scaling_func=logistic, args=(a, x0, c), cov_func=cov_base)
 
             self.gp_ht = pm.gp.Latent(cov_func=cov)
             mu_f = self.gp_ht.prior(r"$\mu_f$", X=S)
@@ -99,13 +93,13 @@ class WohlerCurve:
             )
 
     def sampleModel(self, ndraws):
+        print("Sampling WOHLER MODEL")
         # with self.SNCurveModel:
-        # self.trace = pm.sample_smc(draws=ndraws, parallel=True)
+        #     self.trace = pm.sample_smc(draws=ndraws, cores = 4, return_inferencedata=True)
         # self.trace = pm.sample(draws=ndraws, chains=4, tune=2000, target_accept=0.97)
 
-        print("Sampling WOHLER MODEL")
         compiled_model = nutpie.compile_pymc_model(self.SNCurveModel)
-        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=500, chains=2)
+        self.trace = nutpie.sample(compiled_model, draws=ndraws, tune=2000, chains=4)
         az.to_netcdf(
             data=self.trace, filename=self.results_folder / "SN_MODEL_TRACE.nc"
         )
@@ -135,9 +129,7 @@ class WohlerCurve:
         # except Exception as e:
         #     print(e)
 
-        az.to_netcdf(
-            data=y_samples, filename=self.results_folder / "SN_SAMPLES.nc"
-        )
+        az.to_netcdf(data=y_samples, filename=self.results_folder / "SN_SAMPLES.nc")
         # with open(self.results_folder / "SN_SAMPLES.json", "w") as file:
         #     json.dump(y_samples, file)
 
@@ -146,10 +138,16 @@ class WohlerCurve:
     ):
         S = self.S.reshape((-1, 1))
 
-        with open(self.results_folder / "SN_SAMPLES.json", "r") as file:
-            y_samples = json.load(file)
+        with open(
+            os.path.join(self.results_folder, "lifeSamples_20.npz"), "rb"
+        ) as file:
+            samples = np.load(file, allow_pickle=True)
+            y_samples = {key: jnp.array(val) for key, val in samples.items()}
 
-        y_samples = {key: jnp.array(val) for key, val in y_samples.items()}
+        # with open(self.results_folder / "SN_SAMPLES.json", "r") as file:
+        #     y_samples = json.load(file)
+
+        # y_samples = {key: jnp.array(val) for key, val in y_samples.items()}
         # counts, bins = jnp.histogram(y_samples['damageVals'].flatten())
 
         # _, ax = plt.subplots(1,1,figsize=(10, 4))
@@ -181,7 +179,7 @@ class WohlerCurve:
             y_obs_=self.log_N,
         )
 
-        plt.savefig(os.path.join(self.results_folder, "heteroModel.jpg"))
+        plt.savefig(self.results_folder / "heteroModel.jpg", dpi=600)
         plt.close()
 
         fig, axs = plt.subplots(1, 2)
@@ -201,11 +199,11 @@ class WohlerCurve:
         plt.savefig(self.results_folder / "WOHLER_GPDIST.jpg")
         plt.close()
 
-    def restoreTrace(self):
+    def restoreTrace(self, ndraws):
         path = self.results_folder / "SN_MODEL_TRACE.nc"
 
         if os.path.exists(path):
             self.trace = az.from_netcdf(filename=path)
         else:
-            self.sampleModel(500)
+            self.sampleModel(ndraws)
         return self.trace

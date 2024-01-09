@@ -18,6 +18,8 @@ from matplotlib import colors
 from matplotlib.ticker import PercentFormatter
 
 from typing import Dict, Any, List
+
+from .plotUtils import plot_mean, plot_total, plot_var
 from .damageModelGao import gaoModel_debug, gaoModel, minerRule
 from .aeran_model import aeran_model
 from .freqModel import LoadModel
@@ -35,13 +37,20 @@ mpl.rcParams["agg.path.chunksize"] = 10000
 # plt.style.use(['science', 'ieee'])
 # config.update("jax_debug_nans", True)
 
+
 def get_batch(arr, size, batch_dim=0, max_batches=10):
     n_batches = arr.shape[batch_dim] // size
 
-    for i in range(n_batches + 1):
+    for i in range(n_batches):
         if i > max_batches:
             break
-        yield arr.take(indices=jnp.arange(i*size, (i+1)*size), axis=batch_dim)
+        yield arr.take(indices=jnp.arange(i * size, (i + 1) * size), axis=batch_dim)
+
+
+def get_random_params(x, y, idx, size):
+    y_slice = y[idx, :]
+    x_slice = x[idx, :]
+    return np.random.choice(x_slice, size=size), np.random.choice(y_slice, size=size)
 
 
 def amplitudesToLoads(amplitudes, pf_slope):
@@ -118,8 +127,8 @@ class DamageCalculation:
         self.varCoeff = 0.1
 
     # #@profile
-    def restoreTraces(self):
-        self.traceWohler = self.WohlerC.restoreTrace()
+    def restoreTraces(self, ndraws_wohler):
+        self.traceWohler = self.WohlerC.restoreTrace(ndraws=ndraws_wohler)
         self.traceLoads = self.LoadM.restoreTrace()
         self.tracePF = self.PFSlopeModel.restoreTrace()
 
@@ -191,7 +200,7 @@ class DamageCalculation:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
     # @profile
-    def calculate_damage(self,cycles_per_year, _iter, plot: bool = False):
+    def calculate_damage(self, cycles_per_year, _iter, plot: bool = False):
         print("=/" * 30)
         print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
@@ -200,24 +209,28 @@ class DamageCalculation:
         print(f"Total Cycles: {n_cycles.mean()}")
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
         lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
-        sigma_i = jnp.array(self.amplitudes.T[:,:Nf.shape[1]], dtype=jnp.float32)
+        sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
         shape = (Nf.shape[0],)
         print(f"cycles shape: {cycles.shape} ")
         print(f"Nf shape: {Nf.shape} ")
         print(f"lnNF shape: {lnNf.shape} ")
         print(f"sigma_i shape: {sigma_i.shape} ")
 
-        damageFun = jax.vmap(lambda x,y,z,w: aeran_model(x,y,z,w, shape=shape), in_axes=(None, 1, 1, 1))
-        coolDamageFun = jax.vmap(
-            lambda x: damageFun(x, Nf, lnNf, sigma_i), in_axes=(0,)
-        )
+        damageFun = jax.vmap(aeran_model, in_axes=(None, 1, 1))
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf, sigma_i), in_axes=(0,))
 
         tot_damages = None
 
         BATCH_SIZE = 50
         MAX_BATCHES = 1500
-        for i, batch in tqdm(enumerate(get_batch(cycles, BATCH_SIZE, batch_dim=0, max_batches=MAX_BATCHES)),
-                          total=cycles.shape[0]//BATCH_SIZE, leave=True):
+        i = 0
+        for i, batch in tqdm(
+            enumerate(
+                get_batch(cycles, BATCH_SIZE, batch_dim=0, max_batches=MAX_BATCHES)
+            ),
+            total=cycles.shape[0] // BATCH_SIZE,
+            leave=True,
+        ):
             tot_damages = np.array(coolDamageFun(batch).flatten())
             # print(f"res shape : {tot_damages.shape}")
 
@@ -271,36 +284,44 @@ class DamageCalculation:
 
         return None
 
-    def calculateDamage_debug(self):
+    def calculate_damage_debug(
+        self,
+        cycles_per_year,
+    ):
         # cycles = jnp.array(self.cycles)
-        cycles = np.array(self.cycles.tolist())
-        # Nf = jnp.array(self.Nsamples)
+        print("=/" * 30)
+        print("Damage According to Aeran")
+        # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
+        cycles = jnp.array(self.cycles, dtype=jnp.float32) * cycles_per_year
+        n_cycles = cycles.sum(axis=1)
+        print(f"Total Cycles: {n_cycles.mean()}")
+        Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
+        lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
+        sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
+        shape = (Nf.shape[0],)
+        print(f"cycles shape: {cycles.shape} ")
+        print(f"Nf shape: {Nf.shape} ")
+        print(f"lnNF shape: {lnNf.shape} ")
+        print(f"sigma_i shape: {sigma_i.shape} ")
 
-        self.damages = np.zeros_like(self.Nsamples.tolist())
-        new_arr = np.array(self.Nsamples.tolist())
-        lnNew = np.array(self.slicedTotal.tolist())
+        dmgs = []
+        for i, c in enumerate(cycles):
+            Ni, sigma_i = get_random_params(Nf, sigma_i, idx=i, size=10)
+            dmgs.append(aeran_model(c, Ni, sigma_i, shape=c.shape))
 
-        for i, (N, lnN) in enumerate(zip(new_arr, lnNew)):
-            print("New!")
-            self.damages[i] = gaoModel_debug(cycles, N, lnN)
-
-        # _, ax = plt.subplots(1,1, figsize=(12,8))
-        # counts, bins = jnp.histogram(self.damages)
-        # ax.hist(bins[:-1], bins, weights=counts)
-        # plt.savefig(os.path.join(self.wohlerPath, 'damageHist.jpg'))
-        # plt.close()
-
-        return self.damages
+        return np.hstack(dmgs)
 
     def loadLifeSamples(self):
-
-        with open(os.path.join(self.wohler_path, f"lifeSamples_{self.Tpercentage}.npz"), "rb") as file:
+        with open(
+            os.path.join(self.wohler_path, f"lifeSamples_{self.Tpercentage}.npz"), "rb"
+        ) as file:
             samples = np.load(file, allow_pickle=True)
             self.samples = {key: jnp.array(val) for key, val in samples.items()}
 
     def loadLoadSamples(self):
-
-        with open(os.path.join(self.loadPath, f"loadSamples_{self.Tpercentage}.npz"), "rb") as file:
+        with open(
+            os.path.join(self.loadPath, f"loadSamples_{self.Tpercentage}.npz"), "rb"
+        ) as file:
             samples = np.load(file, allow_pickle=True)
             self.sample_loads = {key: jnp.array(val) for key, val in samples.items()}
             shapes = [val.shape for val in self.sample_loads.values()]
@@ -344,7 +365,9 @@ class DamageCalculation:
         print("Join amplitude and stress...")
         loads = list(self.sample_loads.values())[0].mean(axis=0)
         # loads = self.sample_loads.posterior_predictive.mean("chain")["Loads"]
-        vHisto = jax.vmap(lambda x: jnp.histogram(x, bins=maxLoads, density=True), in_axes=(1,))
+        vHisto = jax.vmap(
+            lambda x: jnp.histogram(x, bins=maxLoads, density=True), in_axes=(1,)
+        )
         self.cycles, self.amplitudes = vHisto(loads)
 
         # Transform to amplitudes and then to 0,1 in Wohler Space
@@ -410,4 +433,28 @@ class DamageCalculation:
         ax.set_ylabel("Density")
 
         plt.savefig(self.wohler_path / "loadSamples.jpg", dpi=600)
+        plt.close()
+
+        fig, axs = plt.subplots(3, 1)
+        fig.set_size_inches(6.3, 6.3)
+        plot_mean(
+            axs[0],
+            newMean,
+            Xnew=self.SNew,
+            ynew=newMean.mean(axis=0),
+            X=self.WohlerC.S,
+            y=self.WohlerC.log_N,
+        )
+        plot_var(axs[1], newVar, X=self.WohlerC.S, Xnew=self.SNew, y_err=1)
+        plot_total(
+            axs[2],
+            newMean,
+            var_samples=newVar,
+            Xnew=self.SNew,
+            ynew=newMean.mean(axis=0),
+            X_obs=self.WohlerC.S,
+            y_obs_=self.WohlerC.log_N,
+        )
+
+        plt.savefig(self.wohler_path / "heteroModel.jpg", dpi=600)
         plt.close()
