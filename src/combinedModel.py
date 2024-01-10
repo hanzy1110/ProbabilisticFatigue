@@ -210,7 +210,6 @@ class DamageCalculation:
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
         lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
         sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
-        shape = (Nf.shape[0],)
         print(f"cycles shape: {cycles.shape} ")
         print(f"Nf shape: {Nf.shape} ")
         print(f"lnNF shape: {lnNf.shape} ")
