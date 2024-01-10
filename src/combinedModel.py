@@ -373,9 +373,9 @@ class DamageCalculation:
         # Transform to amplitudes and then to 0,1 in Wohler Space
         self.amplitudes /= self.WohlerC.SMax
 
-        # self.SNew = completeArray(self.amplitudes[0, :], num=30)
+        self.SNew = completeArray(self.amplitudes[0, :], num=30)
         # Just take the mean samples...
-        self.SNew = self.amplitudes.mean(axis=0)
+        # self.SNew = self.amplitudes.mean(axis=0)
         print(f"SNew shape: {self.SNew.shape}")
 
     def sample_model(self, model: str, ndraws):
