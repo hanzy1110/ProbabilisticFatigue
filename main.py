@@ -51,7 +51,7 @@ def plot_p_failure(values: Dict[int, Dict[str, np.float32]]):
     p_failures = []
     var_coeffs = []
     for year, vals in values.items():
-        p_failures.append(np.array(vals["pFailure"]).mean())
+        p_failures.append(np.array(vals["pFailures"]).mean())
         var_coeffs.append(np.array(vals["varCoeff"]).mean())
 
     fig, (tax, bax) = plt.subplots(2, 1)
@@ -168,7 +168,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
 
     vals = {i: {"pFailures": [], "varCoeff": []} for i in range(len(cycles_per_year))}
     for year, ncycles in enumerate(cycles_per_year):
-        if not os.path.exists(LOAD_PATH / f"tot_damages_{0}.npz"):
+        if not os.path.exists(LOAD_PATH / f"tot_damages_year{year}_batch_0.npz"):
             nbatches = damageCal.calculate_damage(cycles_per_year=ncycles, year=year)
         else:
             nbatches = 100
