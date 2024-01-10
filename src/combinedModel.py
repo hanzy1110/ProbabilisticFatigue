@@ -256,7 +256,7 @@ class DamageCalculation:
                 self.loadPath / f"tot_damages_year{year}_batch_{i}.npz", "wb"
             ) as file:
                 np.savez_compressed(file, tot_damages)
-        delete_live_arrays()
+        # delete_live_arrays()
         return i
 
     def calculate_damage_miner(self, cycles_per_year, _iter, plot=False):
