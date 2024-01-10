@@ -50,17 +50,21 @@ def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
     return frequency
 
 
-def total_cycles_per_year(cycling_hours, n_years, freq_data, ls=0.2, tau=2.0):
+def total_cycles_per_year(cycling_hours, n_years, freq_data, ndraws=1, ls=0.8, tau=1.0):
     freq = calculate_freq_dist(freq_data)
     print(f"frequency => {freq}")
     n_mean = cycling_hours * freq.mean() * 3600
-    return n_mean * np.ones_like(np.arange(n_years))
+    # return n_mean * np.ones_like(np.arange(n_years))
     # Use the follwing when modelling random amounts:
-    # cov = tau * pm.gp.cov.Matern52(1, ls)
-    # X = np.linspace(0, n_years, n_years)[:, None]
-    # K = cov(X).eval()
-    # mu = n_mean * np.ones(len(K))
-    # cycles = pm.draw(pm.MvNormal.dist(mu=mu, cov=K, shape=len(K)), draws=3, random_seed=rng).T
+    cov = tau * pm.gp.cov.Matern52(1, ls)
+    X = np.linspace(0, n_years, n_years)[:, None]
+    K = cov(X).eval()
+    mu = n_mean * np.ones(len(K))
+    cycles = pm.draw(
+        pm.MvNormal.dist(mu=mu, cov=K, shape=len(K)), draws=ndraws, random_seed=rng
+    ).T
+
+    return cycles
 
 
 class LoadModel:

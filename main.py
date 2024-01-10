@@ -4,11 +4,12 @@ import os
 import pathlib
 import re
 import pprint
+from typing import Dict
 import numpy as np
 import pytensor
 import arviz as az
 import jax.numpy as jnp
-from jax import Array, devices
+from jax import Array, devices, local_devices
 import matplotlib.pyplot as plt
 
 # plt.style.use(['science', 'ieee'])
@@ -27,7 +28,7 @@ PLOT_DIR = BASE_PATH / "plots"
 
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 CYCLING_HOURS = 500
-N_YEARS = 40
+N_YEARS = 15
 N_DISTINCT_LOADS = 32
 
 floatX = pytensor.config.floatX
@@ -44,6 +45,25 @@ def getPFailure(damages: Array):
 
 def getVarCoeff(p_failures, N_mcs):
     return np.sqrt((1 - p_failures) / (N_mcs * p_failures))
+
+
+def plot_p_failure(values: Dict[int, Dict[str, np.float32]]):
+    p_failures = []
+    var_coeffs = []
+    for year, vals in values.items():
+        p_failures.append(np.array(vals["pFailure"]).mean())
+        var_coeffs.append(np.array(vals["varCoeff"]).mean())
+
+    fig, (tax, bax) = plt.subplots(2, 1)
+    fig.set_size_inches(3.3, 6.3)
+    tax.plot(p_failures)
+    tax.set_xlabel("Year")
+    tax.set_ylabel(r"$\mathrm{P}_{failure}$")
+    bax.plot(var_coeffs)
+    bax.set_xlabel("Year")
+    bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
+    plt.savefig(RESULTS_FOLDER / "p_failure_plot.png", dpi=600)
+    plt.close()
 
 
 def delete_files_by_regex(folder_path, regex_pattern):
@@ -83,7 +103,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
         delete_files_by_regex(LOAD_PATH, file_pattern)
 
     # os.environ['CUDA_VISIBLE_DEVICES'] = ''
-    # os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".99"
     os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
     print(f"Running on: {devices()}")
@@ -123,6 +143,14 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
         CYCLING_HOURS, N_YEARS, DATA_DIR / "800369.csv"
     )
 
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(3.3, 3.3)
+    ax.plot(cycles_per_year)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Cycles / Year")
+    plt.savefig(RESULTS_FOLDER / "cycles_plot.png", dpi=600)
+    plt.close()
+
     print(f"CYCLES PER YEAR {cycles_per_year[0]}")
 
     damageCal.restoreLoadSamples(ndraws=cycles_per_year[0])
@@ -132,26 +160,27 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     print("Starting Damage Calculation...")
     vals = {"pFailures": [], "varCoeff": []}
 
-    if debug:
-        damages_aeran = damageCal.calculate_damage_debug(cycles_per_year[0])
-        print(damages_aeran)
+    # if debug:
+    #     damages_aeran = damageCal.calculate_damage_debug(cycles_per_year[0])
+    #     print(damages_aeran)
 
-    else:
+    # else:
+
+    vals = {i: {"pFailures": [], "varCoeff": []} for i in range(len(cycles_per_year))}
+    for year, ncycles in enumerate(cycles_per_year):
         if not os.path.exists(LOAD_PATH / f"tot_damages_{0}.npz"):
-            nbatches = damageCal.calculate_damage(
-                cycles_per_year=cycles_per_year[0], _iter=0
-            )
+            nbatches = damageCal.calculate_damage(cycles_per_year=ncycles, year=year)
         else:
             nbatches = 100
-
-        vals = {"pFailures": [], "varCoeff": []}
 
         tot_damages = None
         for i in range(nbatches):
             print(f"BATCH NUMBER : {i}")
 
             try:
-                with open(LOAD_PATH / f"tot_damages_{i}.npz", "rb") as file:
+                with open(
+                    LOAD_PATH / f"tot_damages_year{year}_batch_{i}.npz", "rb"
+                ) as file:
                     samples = np.load(file, allow_pickle=True)
                     # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}
                     # damages_aeran = jnp.array(samples['arr_0'])
@@ -161,30 +190,34 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
                     else:
                         tot_damages = damages_aeran
 
-                vals["pFailures"].append(getPFailure(damages_aeran))
+                vals[year]["pFailures"].append(getPFailure(damages_aeran))
                 N_mcs = len(damages_aeran)
-                if np.isclose(vals["pFailures"][-1], 0):
-                    vals["varCoeff"].append(0)
+                if np.isclose(vals[year]["pFailures"][-1], 0):
+                    vals[year]["varCoeff"].append(0)
                 else:
-                    vals["varCoeff"].append(getVarCoeff(vals["pFailures"][-1], N_mcs))
+                    vals[year]["varCoeff"].append(
+                        getVarCoeff(vals[year]["pFailures"][-1], N_mcs)
+                    )
             except Exception as e:
                 print(e)
 
-    fig, ax = plt.subplots(1, 2)
-    fig.set_size_inches(6.3, 6.3)
+        fig, ax = plt.subplots(1, 2)
+        fig.set_size_inches(6.3, 6.3)
 
-    p_failures = vals["pFailures"]
-    var_coeff = vals["varCoeff"]
-    ax[0].hist(p_failures, label="Probability of failure")
-    ax[1].hist(tot_damages, density=True, bins=100, label="Aeran Damages")
-    print(f"DAMAGES MEAN => {tot_damages.mean()}")
-    print(f"DAMAGES SD => {tot_damages.sd()}")
-    # ax[0].set_xlabel("Probability of Failure")
+        p_failures = vals[year]["pFailures"]
+        var_coeff = vals[year]["varCoeff"]
+        ax[0].hist(p_failures, label="Probability of failure")
+        ax[1].hist(tot_damages, density=True, bins=100, label="Aeran Damages")
+        # print(f"DAMAGES MEAN => {tot_damages.mean()}")
+        # print(f"DAMAGES STD => {tot_damages.std()}")
+        # ax[0].set_xlabel("Probability of Failure")
 
-    ax[0].legend()
-    ax[1].legend()
-    plt.savefig(RESULTS_FOLDER / "p_failure.png", dpi=600)
-    plt.close()
+        ax[0].legend()
+        ax[1].legend()
+        plt.savefig(RESULTS_FOLDER / f"p_failure_year_{year}.png", dpi=600)
+        plt.close()
+
+    plot_p_failure(vals)
 
 
 if __name__ == "__main__":

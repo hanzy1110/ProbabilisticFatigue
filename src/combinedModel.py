@@ -78,11 +78,24 @@ def completeArray(arr: Array, num):
 
 
 def sliceArrs(dct, out):
-    masks = [jnp.isclose(dct["arr1"], val) for val in dct["arr2"]]
-    init = jnp.array([False for _ in masks[0]])
-    mask = reduce(lambda x, y: jnp.logical_or(x, y), masks, init)
+    # masks = [jnp.isclose(dct["arr1"], val) for val in dct["arr2"]]
+    # init = jnp.array([False for _ in masks[0]])
+    # mask = reduce(lambda x, y: jnp.logical_or(x, y), masks, init)
+
+    mask = jnp.where(dct["arr1"] < dct["arr2"].max())
+
     # return jnp.transpose(out)[mask]
-    return out[mask]
+    return out[mask][:-1, ...]
+
+
+def delete_live_arrays():
+    print("Deleting data from devices...")
+    for arr in jax.live_arrays():
+        arr.delete()
+    # for device in devices():
+    #     lbs = device.live_buffers()
+    #     for lb in lbs:
+    #         lb.delete()
 
 
 class DamageCalculation:
@@ -200,7 +213,7 @@ class DamageCalculation:
             np.savez_compressed(file, meanSamples, varianceSamples)
 
     # @profile
-    def calculate_damage(self, cycles_per_year, _iter, plot: bool = False):
+    def calculate_damage(self, cycles_per_year, year, plot: bool = False):
         print("=/" * 30)
         print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
@@ -209,7 +222,13 @@ class DamageCalculation:
         print(f"Total Cycles: {n_cycles.mean()}")
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
         lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
-        sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
+
+        if Nf.shape[1] < self.amplitudes.shape[1]:
+            sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
+        else:
+            sigma_i = jnp.array(self.amplitudes.T, dtype=jnp.float32)
+            Nf = Nf[:, : sigma_i.shape[1]]
+
         print(f"cycles shape: {cycles.shape} ")
         print(f"Nf shape: {Nf.shape} ")
         print(f"lnNF shape: {lnNf.shape} ")
@@ -233,8 +252,11 @@ class DamageCalculation:
             tot_damages = np.array(coolDamageFun(batch).flatten())
             # print(f"res shape : {tot_damages.shape}")
 
-            with open(self.loadPath / f"tot_damages_{i}.npz", "wb") as file:
+            with open(
+                self.loadPath / f"tot_damages_year{year}_batch_{i}.npz", "wb"
+            ) as file:
                 np.savez_compressed(file, tot_damages)
+        delete_live_arrays()
         return i
 
     def calculate_damage_miner(self, cycles_per_year, _iter, plot=False):
