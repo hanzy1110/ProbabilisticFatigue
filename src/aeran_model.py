@@ -28,11 +28,11 @@ def aeran_damage(l, i, Di, DiPrev, ni, Ni, mu_i, delta_i):
     nip1_tot = ni
     if i > 0:
         exp_ = mu_i / delta_i
-        inner = jnp.power((1.0 - DiPrev), exp_)
+        inner = jnp.power(jnp.abs(1.0 - DiPrev), exp_)
         nip1_eff = (1.0 - inner) * Ni
         nip1_tot = nip1_eff + ni
 
-    inner_d = 1 - jnp.power((1 - nip1_tot / Ni), delta_i)
+    inner_d = 1 - jnp.power(jnp.abs(1 - nip1_tot / Ni), delta_i)
     DiPrev = Di
     Di = inner_d
     return jnp.array([Di, DiPrev])
