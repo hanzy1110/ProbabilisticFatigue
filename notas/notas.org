@@ -60,3 +60,41 @@ Por que es importante conocer la probabilidad de falla en los Conductores ACSR
 + Sampleo de la vida a la fatiga en función de las cargas obtenidas
 + Combinación de los tres elementos en el modelo de danio
 + Obtención de la probabilidad de falla a partir de las distribuciones anuales y la transferencia del daño entre años
+
+
+* Notes from Sobczyk:
+
+What kind of mathematical language should be used to describe the unpredictable fatigue process?
+Naturally, the language of probability and stochastic models are the ones most well suited to describe them.
+
+The simmetry (or lack thereof) is characterized by its skewness. Simmetric distributions have 0 skewness coeficcient.
+
+\begin{equation}
+    \zeta_{\mathrm{X}}^{(1)} = \frac{1}{\sigma_{\mathrm{X}}^{(3)}} \langle(\mathrm{X} - m_{\mathrm{X}})^3\rangle = \frac{\mu_3}{\sigma_{\mathrm{X}}^3}
+\end{equation}
+
+Concentration of Values around the mean is characterized by the excess coeficient.
+\begin{equation}
+    \zeta_{\mathrm{X}}^{(2)} = \frac{1}{\sigma_{\mathrm{X}}^{(4)}} \langle(\mathrm{X} - m_{\mathrm{X}})^4\rangle - 3 = \frac{\mu_4}{\sigma_{\mathrm{X}}^4} -3
+\end{equation}
+Excess and Skewness are 0 for the Gaussian Distribution
+
+** Useful distributions
+
++ Inverse Gaussian: Verty flexible
++ Extreme Value Distribution:
+  Sean $X_1, X_2,..., X_n$ un conjunto de variables aleatorias, entonces:
+
+  \begin{equation}
+Y_n = max(X_1, X_2,..., X_n)
+Z_n = min(X_1, X_2,..., X_n)
+  \end{equation}
+ Son también variables aleatorias con distribucion:
+
+ \begin{equation}
+F_{Y_n} = P(Y_n < y) = P(allX_k <= y) = [F_X(y)]^n
+ \end{equation}
+
+ \begin{equation}
+F_{Z_n} = P(Z_n < z) = P(at least one X_k <= z) = 1-[1-F_X(y)]^n
+ \end{equation}

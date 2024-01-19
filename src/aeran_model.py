@@ -8,7 +8,7 @@ import jax.numpy as jnp
 
 from jax import config
 
-config.update("jax_debug_nans", False)
+config.update("jax_debug_nans", True)
 config.update("jax_debug_infs", True)
 
 

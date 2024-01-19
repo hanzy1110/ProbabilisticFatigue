@@ -147,6 +147,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     ax.plot(cycles_per_year)
     ax.set_xlabel("Year")
     ax.set_ylabel("Cycles / Year")
+    ax.set_xscale("log")
     plt.savefig(RESULTS_FOLDER / "cycles_plot.png", dpi=600)
     plt.close()
 
