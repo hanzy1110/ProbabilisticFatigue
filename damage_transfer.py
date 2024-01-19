@@ -44,7 +44,9 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
 tot_damages = get_tot_damages(0)
 
 print("NAN FRAC ==>")
-print(len(tot_damages[~np.isnan(tot_damages)]) / len(tot_damages))
+print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
+print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
+print(f"TOTAL LEN {len(tot_damages)}")
 
 tot_damages = tot_damages[~np.isnan(tot_damages)]
 
