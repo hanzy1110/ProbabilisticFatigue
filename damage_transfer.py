@@ -14,6 +14,7 @@ PLOT_DIR = BASE_PATH / "plots"
 CYCLING_HOURS = 100
 N_YEARS = 15
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
+MAX_SAMPLES = 100000
 year, i = 0, 13
 nbatches = 100
 
@@ -48,7 +49,7 @@ print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
 print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
 print(f"TOTAL LEN {len(tot_damages)}")
 
-tot_damages = tot_damages[~np.isnan(tot_damages)]
+tot_damages = tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
 
 with pm.Model() as damage_model:
     alpha = pm.Gamma("alpha", alpha=1, beta=1)
