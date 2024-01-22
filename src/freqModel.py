@@ -24,7 +24,9 @@ def hist_sample(hist, n):
     Returns:
         [list]: list with samples
     """
-    return np.random.choice(hist[1], size=n, p=hist[0] / sum(hist[0]))
+    ps = hist[0] / hist[0].sum()
+    assert np.isclose(ps.sum(), 1)
+    return np.random.choice(hist[1], size=n, p=ps)
 
 
 def get_freq_density(freq, data):
