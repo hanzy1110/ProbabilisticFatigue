@@ -58,7 +58,8 @@ def amplitudesToLoads(amplitudes, pf_slope):
 
 
 def log1exp(arr: jnp.ndarray):
-    return jnp.log(1 + jnp.exp(arr))
+    # return jnp.log(1 + jnp.exp(arr))
+    return jnp.log(jnp.exp(arr) - 1)
 
 
 def log1expM(arr: jnp.ndarray):
