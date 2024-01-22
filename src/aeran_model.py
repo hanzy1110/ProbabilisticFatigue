@@ -8,7 +8,7 @@ import jax.numpy as jnp
 
 from jax import config
 
-config.update("jax_debug_nans", False)
+config.update("jax_debug_nans", True)
 config.update("jax_debug_infs", True)
 
 
@@ -33,7 +33,8 @@ def aeran_model(n_i: Array, N_i: Array, sigma_i: Array) -> Array:
         delta_i = 1.25 / lnNi
         mu_i = (sigma_i[i - 1] / s_i) ** 2.0
 
-        lin_dmg = jnp.clip(ni / Ni, 0, 1)
+        # lin_dmg = jnp.clip(ni / Ni, 0, 1)
+        lin_dmg = ni / Ni
 
         nip1_tot = ni
         if i > 0:
@@ -51,4 +52,5 @@ def aeran_model(n_i: Array, N_i: Array, sigma_i: Array) -> Array:
         Di = inner_d
 
     # Clip everything to ensure the
-    return jnp.clip(jnp.abs(Di), 0, 1)
+    # return jnp.clip(jnp.abs(Di), 0, 1)
+    return jnp.abs(Di)
