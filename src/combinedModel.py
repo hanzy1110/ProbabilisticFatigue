@@ -22,7 +22,7 @@ from typing import Dict, Any, List
 from .plotUtils import plot_mean, plot_total, plot_var
 from .damageModelGao import gaoModel_debug, gaoModel, minerRule
 from .aeran_model import aeran_model
-from .freqModel import LoadModel
+from .freqModel import LoadModel, hist_sample
 from .models import WohlerCurve
 from .stressModel import CableProps, PFSlopeModel
 
@@ -219,8 +219,10 @@ class DamageCalculation:
         print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
         # CLEARLY NEEDS WORK!!!
-        cycles = jnp.array(self.cycles, dtype=jnp.float32) * cycles_per_year
+        cycles = jnp.array(self.cycles, dtype=jnp.float32)
+        amps = hist_sample([cycles, self.amplitudes[0, :]], n=int(cycles_per_year))
 
+        cycles, _ = jnp.histogram(amps)
         n_cycles = cycles.sum(axis=1)
         print(f"Total Cycles: {n_cycles.mean()}")
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
