@@ -68,7 +68,7 @@ def log1expM(arr: jnp.ndarray):
     return jnp.log(jnp.exp(arr) - 1)
 
 
-@jax.jit
+# @jax.jit
 def hist_sample_jax(vals, densities, n):
     """Genertae histogram sample
     Args:
