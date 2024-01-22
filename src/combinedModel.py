@@ -223,10 +223,9 @@ class DamageCalculation:
         amps = hist_sample(
             [cycles.mean(axis=0), self.amplitudes[0, :-1]], n=int(cycles_per_year)
         )
-
         cycles, _ = jnp.histogram(amps)
-        n_cycles = cycles.sum(axis=1)
-        print(f"Total Cycles: {n_cycles.mean()}")
+        # n_cycles = cycles.sum(axis=1)
+        # print(f"Total Cycles: {n_cycles.mean()}")
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
         lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
 
