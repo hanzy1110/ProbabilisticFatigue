@@ -39,7 +39,7 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
         except Exception as e:
             print(e)
 
-    if tot_damages:
+    if tot_damages is not None:
         return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
 
     return tot_damages
