@@ -47,8 +47,8 @@ def plot_mean(ax, mean_samples, Xnew, ynew, X, y):
     our hyperparameters. As such, we use percentiles rather than mean +/- stdev to
     represent the spread of predictions from our models.
     """
-    mean_samples = np.log(1 + np.exp(mean_samples))
-    ynew = np.log(1 + np.exp(ynew))
+    # mean_samples = np.log(1 + np.exp(mean_samples))
+    # ynew = np.log(1 + np.exp(ynew))
     l, m, u = get_quantiles(mean_samples)
     ax.plot(Xnew, m, "C0", label="Median")
 
