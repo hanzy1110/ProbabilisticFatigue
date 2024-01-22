@@ -40,19 +40,17 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
             print(e)
 
     if tot_damages is not None:
+        print("NAN FRAC ==>")
+        print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
+        print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
+        print(f"TOTAL LEN {len(tot_damages)}")
         return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
 
     return tot_damages
 
 
-tot_damages = get_tot_damages(0)
-
-print("NAN FRAC ==>")
-print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
-print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
-print(f"TOTAL LEN {len(tot_damages)}")
-
-tot_damages = np.array([get_tot_damages(i) for i in range(N_YEARS)], dtype=np.float32)
+damages = [get_tot_damages(i) for i in range(N_YEARS)]
+tot_damages = np.array([d for d in damages if d is not None], dtype=np.float32)
 
 with pm.Model() as damage_model:
     alpha = pm.Gamma("alpha", alpha=1, beta=1, shape=(N_YEARS,))
