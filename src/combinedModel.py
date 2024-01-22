@@ -397,7 +397,7 @@ class DamageCalculation:
 
         fig, ax = plt.subplots(1, 1)
         for i in range(5):
-            ax.hist(self.amplitudes[i, :], bins=self.cycles[i, :])
+            ax.stairs(self.amplitudes[i, :], self.cycles[i, :])
         ax.set_xlabel("Amplitudes")
         ax.set_ylabel("Sampled density")
 
