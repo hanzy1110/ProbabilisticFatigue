@@ -52,7 +52,7 @@ def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
     return frequency
 
 
-def total_cycles_per_year(cycling_hours, n_years, freq_data, ndraws=1, ls=0.8, tau=1.0):
+def total_cycles_per_year(cycling_hours, n_years, freq_data, ndraws=1, ls=0.8, tau=3.0):
     freq = calculate_freq_dist(freq_data)
     print(f"frequency => {freq}")
     n_mean = cycling_hours * freq.mean() * 3600

@@ -27,7 +27,7 @@ RESULTS_FOLDER = BASE_PATH / "RESULTS"
 PLOT_DIR = BASE_PATH / "plots"
 
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
-CYCLING_HOURS = 100
+CYCLING_HOURS = 500
 N_YEARS = 15
 N_DISTINCT_LOADS = 32
 
@@ -147,7 +147,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     ax.plot(cycles_per_year)
     ax.set_xlabel("Year")
     ax.set_ylabel("Cycles / Year")
-    ax.set_xscale("log")
+    ax.set_yscale("log")
     plt.savefig(RESULTS_FOLDER / "cycles_plot.png", dpi=600)
     plt.close()
 
