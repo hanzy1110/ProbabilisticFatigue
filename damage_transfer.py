@@ -49,9 +49,7 @@ print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
 print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
 print(f"TOTAL LEN {len(tot_damages)}")
 
-tot_damages = np.fromiter(
-    (get_tot_damages(i) for i in range(N_YEARS)), dtype=np.float32
-)
+tot_damages = np.array([get_tot_damages(i) for i in range(N_YEARS)], dtype=np.float32)
 
 with pm.Model() as damage_model:
     alpha = pm.Gamma("alpha", alpha=1, beta=1, shape=(N_YEARS,))
