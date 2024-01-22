@@ -221,7 +221,7 @@ class DamageCalculation:
         # CLEARLY NEEDS WORK!!!
         cycles = jnp.array(self.cycles, dtype=jnp.float32)
         amps = hist_sample(
-            [cycles.mean(axis=0), self.amplitudes[0, :]], n=int(cycles_per_year)
+            [cycles.mean(axis=0), self.amplitudes[0, :-1]], n=int(cycles_per_year)
         )
 
         cycles, _ = jnp.histogram(amps)
