@@ -24,7 +24,7 @@ def hist_sample(hist, n):
     Returns:
         [list]: list with samples
     """
-    ps = hist[0] / hist[0].sum()
+    ps = np.array(hist[0] / hist[0].sum())
     assert np.isclose(ps.sum(), 1)
     return np.random.choice(hist[1], size=n, p=ps)
 
