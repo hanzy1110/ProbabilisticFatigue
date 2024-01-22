@@ -39,7 +39,7 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
         except Exception as e:
             print(e)
 
-    return tot_damages
+    return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
 
 
 tot_damages = get_tot_damages(0)
@@ -49,11 +49,13 @@ print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
 print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
 print(f"TOTAL LEN {len(tot_damages)}")
 
-tot_damages = tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
+tot_damages = np.fromiter(
+    (get_tot_damages(i) for i in range(N_YEARS)), dtype=np.float32
+)
 
 with pm.Model() as damage_model:
-    alpha = pm.Gamma("alpha", alpha=1, beta=1)
-    beta = pm.Gamma("beta", alpha=1, beta=1)
+    alpha = pm.Gamma("alpha", alpha=1, beta=1, shape=(N_YEARS,))
+    beta = pm.Gamma("beta", alpha=1, beta=1, shape=(N_YEARS,))
     damages = pm.Gamma("likelihood", alpha=alpha, beta=beta, observed=tot_damages)
 
 
