@@ -39,7 +39,7 @@ printer = pprint.PrettyPrinter(5, compact=True)
 
 
 def getPFailure(damages: Array):
-    return len(damages[damages > 1]) / len(damages)
+    return len(damages[jnp.isclose(damages, 1)]) / len(damages)
 
 
 def getVarCoeff(p_failures, N_mcs):
