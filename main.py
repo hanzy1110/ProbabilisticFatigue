@@ -202,6 +202,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
                     )
             except Exception as e:
                 print(e)
+                raise e
 
         fig, ax = plt.subplots(1, 2)
         fig.set_size_inches(6.3, 6.3)
