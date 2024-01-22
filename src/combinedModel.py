@@ -390,9 +390,7 @@ class DamageCalculation:
         print("Join amplitude and stress...")
         loads = list(self.sample_loads.values())[0].mean(axis=0)
         # loads = self.sample_loads.posterior_predictive.mean("chain")["Loads"]
-        vHisto = jax.vmap(
-            lambda x: jnp.histogram(x, bins=maxLoads, density=True), in_axes=(1,)
-        )
+        vHisto = jax.vmap(lambda x: jnp.histogram(x, bins=maxLoads), in_axes=(1,))
         self.cycles, self.amplitudes = vHisto(loads)
 
         fig, ax = plt.subplots(1, 1)
