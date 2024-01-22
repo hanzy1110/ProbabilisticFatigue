@@ -52,7 +52,7 @@ tot_damages = tot_damages[~np.isnan(tot_damages)]
 
 with pm.Model() as damage_model:
     alpha = pm.Gamma("alpha", alpha=1, beta=1)
-    beta = pm.Beta("beta", alpha=1, beta=1)
+    beta = pm.Gamma("beta", alpha=1, beta=1)
     damages = pm.Gamma("likelihood", alpha=alpha, beta=beta, observed=tot_damages)
 
 
