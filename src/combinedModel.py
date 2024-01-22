@@ -69,7 +69,7 @@ def log1expM(arr: jnp.ndarray):
 
 
 # @jax.jit
-def hist_sample_jax(vals, densities, n):
+def get_densities(densities, n):
     """Genertae histogram sample
     Args:
         hist (array): hist[0]: frecuencies/probs of X values, hist[1]: X values
@@ -77,9 +77,10 @@ def hist_sample_jax(vals, densities, n):
     Returns:
         [list]: list with samples
     """
-    key, subkey = jax.random.split(KEY)
-    ps = densities / densities.sum()
-    return jax.random.choice(subkey, vals, shape=(n,), p=ps)
+    # key, subkey = jax.random.split(KEY)
+    # ps = densities / densities.sum()
+    # return jax.random.choice(subkey, vals, shape=(n,), p=ps)
+    return jnp.array((densities / densities.sum()) * n, dtype=jnp.int32)
 
 
 @jax.jit
@@ -240,19 +241,10 @@ class DamageCalculation:
         cycles = jnp.array(self.cycles, dtype=jnp.float32)
 
         vSample = jax.vmap(
-            lambda x, y: jnp.histogram(
-                hist_sample_jax(x, y, int(cycles_per_year)), bins=nloads
-            ),
-            in_axes=(0, 0),
+            jax.jit(lambda x: get_densities(x, cycles_per_year), static_argnums=(1,))
         )
-        # cycles, amps = vSample(
-        #     cycles[:MAX_CYCLES_SAMPLES], self.amplitudes[:MAX_CYCLES_SAMPLES, :-1]
-        # )
-        # cycles, _ = jnp.histogram(amps, bins=nloads)
-        # n_cycles = cycles.sum(axis=1)
-        # print(f"Total Cycles: {n_cycles.mean()}")
+
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
-        # lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
 
         if Nf.shape[1] < self.amplitudes.shape[1]:
             sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
@@ -262,7 +254,6 @@ class DamageCalculation:
 
         print(f"cycles shape: {cycles.shape} ")
         print(f"Nf shape: {Nf.shape} ")
-        # print(f"lnNF shape: {lnNf.shape} ")
         print(f"sigma_i shape: {sigma_i.shape} ")
 
         damageFun = jax.vmap(aeran_model, in_axes=(None, 1, 1))
@@ -280,7 +271,7 @@ class DamageCalculation:
             total=cycles.shape[0] // BATCH_SIZE,
             leave=True,
         ):
-            cycles, amps = vSample(batch, self.amplitudes[: batch.shape[0], :-1])
+            cycles = vSample(batch)
             tot_damages = np.array(coolDamageFun(cycles).flatten())
             # print(f"res shape : {tot_damages.shape}")
 
