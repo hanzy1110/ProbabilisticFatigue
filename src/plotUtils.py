@@ -3,15 +3,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy.spatial.distance import pdist
+
 az.style.use("arviz-darkgrid")
 SEED = 2022
 rng = np.random.default_rng(SEED)
 
+
 def signal(x):
     return x / 2 + np.sin(2 * np.pi * x) / 5
 
+
 def noise(y):
     return np.exp(y) / 20
+
 
 def get_ℓ_prior(points):
     """Calculates mean and sd for InverseGamma prior on lengthscale"""
@@ -22,6 +26,7 @@ def get_ℓ_prior(points):
     ℓ_σ = max(0.1, (ℓ_u - ℓ_l) / 6)
     ℓ_μ = ℓ_l + 3 * ℓ_σ
     return ℓ_μ, ℓ_σ
+
 
 def plot_inducing_points(ax, Xu):
     yl = ax.get_ylim()
@@ -42,8 +47,8 @@ def plot_mean(ax, mean_samples, Xnew, ynew, X, y):
     our hyperparameters. As such, we use percentiles rather than mean +/- stdev to
     represent the spread of predictions from our models.
     """
-    mean_samples = np.log(1+np.exp(mean_samples))
-    ynew = np.log(1+np.exp(ynew))
+    mean_samples = np.log(1 + np.exp(mean_samples))
+    ynew = np.log(1 + np.exp(ynew))
     l, m, u = get_quantiles(mean_samples)
     ax.plot(Xnew, m, "C0", label="Median")
 
@@ -59,7 +64,7 @@ def plot_mean(ax, mean_samples, Xnew, ynew, X, y):
 def plot_var(ax, var_samples, X, Xnew, y_err):
     """Plots the median and 95% CI from samples of the variance"""
     Xnew_ = Xnew.flatten()
-    var_samples = np.exp(var_samples)
+    # var_samples = np.exp(var_samples)
     if var_samples.squeeze().ndim == 1:
         ax.plot(Xnew, var_samples, "C0", label="Median")
     else:
@@ -72,7 +77,17 @@ def plot_var(ax, var_samples, X, Xnew, y_err):
     ax.legend(loc="upper left")
 
 
-def plot_total(ax, mean_samples, Xnew, ynew, X_obs, y_obs_,  var_samples=None, bootstrap=True, n_boots=100):
+def plot_total(
+    ax,
+    mean_samples,
+    Xnew,
+    ynew,
+    X_obs,
+    y_obs_,
+    var_samples=None,
+    bootstrap=True,
+    n_boots=100,
+):
     """Plots the overall mean and variance of the aggregate system
 
     We can represent the overall uncertainty via explicitly sampling the underlying normal
@@ -82,8 +97,8 @@ def plot_total(ax, mean_samples, Xnew, ynew, X_obs, y_obs_,  var_samples=None, b
     the percentiles will likely give a more accurate representation.
     """
 
-    mean_samples = np.log(1+np.exp(mean_samples))
-    ynew = np.log(1+np.exp(ynew))
+    # mean_samples = np.log(1 + np.exp(mean_samples))
+    # ynew = np.log(1+np.exp(ynew))
     Xnew_ = Xnew.flatten()
     if (var_samples is None) or (var_samples.squeeze().ndim == 1):
         samples = mean_samples
@@ -109,7 +124,9 @@ def plot_total(ax, mean_samples, Xnew, ynew, X_obs, y_obs_,  var_samples=None, b
         l, u = m + 2 * sd, m + 2 * sd
 
     ax.fill_between(Xnew.flatten(), u, facecolor="C0", alpha=0.5, label="Total 95% CI")
-    # ax.fill_between(Xnew.flatten(), l, u, facecolor="C0", alpha=0.5, label="Total 95% CI")
+    ax.fill_between(
+        Xnew.flatten(), l, u, facecolor="C0", alpha=0.5, label="Total 95% CI"
+    )
 
     ax.plot(Xnew, ynew, "--k", label="Mean Function")
     ax.plot(X_obs, y_obs_, "C1.", label="Observations")

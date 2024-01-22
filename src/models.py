@@ -42,7 +42,9 @@ class WohlerCurve:
         self.log_N = SN_data["X"].flatten()
         self.S = SN_data["Y"].flatten()
 
-    def NormalizeData(self, plotExp: bool):
+    def NormalizeData(self, plotExp=True):
+        log_n_prev = self.log_N
+        s = self.S
         self.NMax = np.log(self.log_N.max() * 1e6)
         self.log_N = np.log(self.log_N * 1e6) / self.NMax
 
@@ -52,10 +54,13 @@ class WohlerCurve:
         # self.SNew = self.S.reshape(-1, 1)
 
         if plotExp:
-            _, ax = plt.subplots(1, 1, figsize=(12, 8))
+            _, (ax, ax1) = plt.subplots(1, 2)
             ax.scatter(self.S, self.log_N)
             ax.set_ylabel("log(N)/log(NMax)")
             ax.set_xlabel("S/Smax")
+            ax1.scatter(s, log_n_prev)
+            ax1.set_ylabel("N")
+            ax1.set_xlabel("S")
             plt.savefig(os.path.join(self.results_folder, "experimental.jpg"))
             plt.close()
 

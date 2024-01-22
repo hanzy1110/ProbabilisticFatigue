@@ -353,6 +353,7 @@ class DamageCalculation:
     def transformGPs(self):
         print("Transforming GPs")
         meanSamps, varSamps = list(self.samples.values())
+        # mean over the chains
         self.meanSamples = jnp.array(meanSamps).mean(axis=0)
 
         self.varianceSamples = jnp.array(varSamps).mean(axis=0)
