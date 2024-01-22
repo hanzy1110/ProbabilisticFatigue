@@ -52,13 +52,15 @@ def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
     return frequency
 
 
-def total_cycles_per_year(cycling_hours, n_years, freq_data, ndraws=1, ls=0.8, tau=3.0):
+def total_cycles_per_year(
+    cycling_hours, n_years, freq_data, ndraws=1, ls=0.8, tau=10.0
+):
     freq = calculate_freq_dist(freq_data)
     print(f"frequency => {freq}")
     n_mean = cycling_hours * freq.mean() * 3600
     # return n_mean * np.ones_like(np.arange(n_years))
     # Use the follwing when modelling random amounts:
-    cov = tau * pm.gp.cov.Matern52(1, ls)
+    cov = tau**2 * pm.gp.cov.Matern52(1, ls)
     X = np.linspace(0, n_years, n_years)[:, None]
     K = cov(X).eval()
     mu = n_mean * np.ones(len(K))
