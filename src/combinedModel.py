@@ -235,6 +235,8 @@ class DamageCalculation:
         print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
         # CLEARLY NEEDS WORK!!!
+
+        MAX_CYCLES_SAMPLES = 101
         cycles = jnp.array(self.cycles, dtype=jnp.float32)
 
         vSample = jax.vmap(
@@ -243,7 +245,9 @@ class DamageCalculation:
             ),
             in_axes=(0, 0),
         )
-        cycles, amps = vSample(cycles, self.amplitudes[:, :-1])
+        # cycles, amps = vSample(
+        #     cycles[:MAX_CYCLES_SAMPLES], self.amplitudes[:MAX_CYCLES_SAMPLES, :-1]
+        # )
         # cycles, _ = jnp.histogram(amps, bins=nloads)
         # n_cycles = cycles.sum(axis=1)
         # print(f"Total Cycles: {n_cycles.mean()}")
@@ -276,7 +280,8 @@ class DamageCalculation:
             total=cycles.shape[0] // BATCH_SIZE,
             leave=True,
         ):
-            tot_damages = np.array(coolDamageFun(batch).flatten())
+            cycles, amps = vSample(batch, self.amplitudes[: batch.shape[0], :-1])
+            tot_damages = np.array(coolDamageFun(cycles).flatten())
             # print(f"res shape : {tot_damages.shape}")
 
             with open(
