@@ -218,7 +218,9 @@ class DamageCalculation:
         print("=/" * 30)
         print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
+        # CLEARLY NEEDS WORK!!!
         cycles = jnp.array(self.cycles, dtype=jnp.float32) * cycles_per_year
+
         n_cycles = cycles.sum(axis=1)
         print(f"Total Cycles: {n_cycles.mean()}")
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
@@ -392,6 +394,14 @@ class DamageCalculation:
             lambda x: jnp.histogram(x, bins=maxLoads, density=True), in_axes=(1,)
         )
         self.cycles, self.amplitudes = vHisto(loads)
+
+        fig, ax = plt.subplots(1, 1)
+        for i in range(5):
+            ax.hist(self.amplitudes[i, :], bins=self.cycles[i, :])
+        ax.set_xlabel("Amplitudes")
+        ax.set_ylabel("Sampled density")
+
+        plt.savefig(self.wohler_path / "sampled_loads.png", dpi=600)
 
         # Transform to amplitudes and then to 0,1 in Wohler Space
         self.amplitudes /= self.WohlerC.SMax

@@ -34,8 +34,6 @@ def aeran_model(n_i: Array, N_i: Array, sigma_i: Array) -> Array:
         mu_i = (sigma_i[i - 1] / s_i) ** 2.0
 
         # lin_dmg = jnp.clip(ni / Ni, 0, 1)
-        lin_dmg = ni / Ni
-
         nip1_tot = ni
         if i > 0:
             exp_ = mu_i / delta_i
@@ -45,8 +43,6 @@ def aeran_model(n_i: Array, N_i: Array, sigma_i: Array) -> Array:
 
         # Doesn't this defeats the purpose
         lin_dmg = jnp.clip(nip1_tot / Ni, 0, 1)
-        # lin_dmg = nip1_tot / Ni
-
         inner_d = 1 - jnp.power((1 - lin_dmg), delta_i)
         DiPrev = Di
         Di = inner_d
