@@ -99,12 +99,23 @@ else:
     print("LOADING PPC")
     ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
 
-fig, ax = plt.subplots(len(names))
+fig, ax = plt.subplots(len(partial_names))
 fig.set_size_inches(3.1, 6.3)
-plt.subplots_adjust(wspace=0.03175)
+plt.subplots_adjust(wspace=0.04175)
 for i, n in enumerate(partial_names):
     d = ppc.posterior_predictive[n]
-    az.plot_dist(d, color="C1", label=n, ax=ax[i])
+    az.plot_dist(
+        d,
+        color="C1",
+        label=n,
+        ax=ax[i],
+        quantiles=[0.25, 0.5, 0.75],
+        plot_kwargs={
+            "color": "darkcoral",
+        },
+        fill_kwargs={"alpha": 0.3, "color": "firebrick"},
+        rug=True,
+    )
 
 plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
 plt.close()
