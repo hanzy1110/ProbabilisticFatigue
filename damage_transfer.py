@@ -93,7 +93,7 @@ if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
             # names.append(name)
             damage = damage_model.named_vars.get(n)
             d = pm.Deterministic(partial_names[i], damage + damage_prev)
-        ppc = pm.sample_posterior_predictive(trace, var_names=names)
+        ppc = pm.sample_posterior_predictive(trace, var_names=partial_names)
         az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
 else:
     print("LOADING PPC")
