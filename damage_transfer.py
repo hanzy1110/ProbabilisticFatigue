@@ -56,16 +56,18 @@ coords = {
     "obs": np.arange(tot_damages.shape[1]),
 }
 
-with pm.Model(coords=coords) as damage_model:
-    alpha = pm.Gamma("alpha", alpha=1, beta=1, dims=("N_YEARS",))
-    beta = pm.Gamma("beta", alpha=1, beta=1, dims=("N_YEARS",))
-    damages = pm.Gamma(
-        "likelihood",
-        alpha=alpha,
-        beta=beta,
-        observed=tot_damages,
-        dims=("N_YEARS", "obs"),
-    )
+# with pm.Model(coords=coords) as damage_model:
+with pm.Model() as damage_model:
+    for i in coords["N_YEARS"]:
+        alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
+        beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
+        damages = pm.Gamma(
+            f"damage_{i}",
+            alpha=alpha,
+            beta=beta,
+            observed=tot_damages[i, :],
+            # dims=("N_YEARS", "obs"),
+        )
 
 
 compiled_model = nutpie.compile_pymc_model(damage_model)
