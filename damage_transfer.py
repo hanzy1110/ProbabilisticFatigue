@@ -22,7 +22,7 @@ nbatches = 100
 def get_tot_damages(year, nbatches=100) -> np.ndarray:
     tot_damages = None
     for i in range(nbatches):
-        print(f"BATCH NUMBER : {i}")
+        # print(f"BATCH NUMBER : {i}")
 
         try:
             with open(
@@ -37,7 +37,8 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
                 else:
                     tot_damages = damages_aeran
         except Exception as e:
-            print(e)
+            continue
+            # print(e)
 
     if tot_damages is not None:
         print("NAN FRAC ==>")
@@ -73,10 +74,24 @@ with pm.Model() as damage_model:
 compiled_model = nutpie.compile_pymc_model(damage_model)
 trace = nutpie.sample(compiled_model, draws=1400, tune=1000, chains=4)
 az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "DAMAGE_MODEL_TRACE.nc")
+# with damage_model:
+#     ppc = pm.sample_posterior_predictive(
+#         trace,
+#     )
+
+names = []
 with damage_model:
-    ppc = pm.sample_posterior_predictive(
-        trace,
-    )
+    for j, i in enumerate(range(1, N_YEARS)):
+        if i == 1:
+            damage_prev = damage_model.named_vars.get(f"damage_{i-1}")
+        else:
+            damage_prev = damage_model.named_vars.get(names[j - 1])
+        name = "damage_{i}-{i-1}"
+        names.append(name)
+        damage = damage_model.named_vars.get(f"damage_{i}")
+        d = pm.Deterministic(name, damage + damage_prev)
+
+    ppc = pm.sample_posterior_predictive(trace, var_names=names)
 
 # fig, ax = plt.subplots(1,1)
 az.plot_trace(trace)
