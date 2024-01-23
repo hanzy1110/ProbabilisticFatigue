@@ -101,29 +101,25 @@ else:
 
 fig, ax = plt.subplots(len(partial_names))
 fig.set_size_inches(3.1, 6.3)
-plt.subplots_adjust(wspace=0.04175)
+plt.subplots_adjust(wspace=0.05175)
 for i, n in enumerate(partial_names):
     d = ppc.posterior_predictive[n]
     az.plot_dist(
         d,
         color="C1",
-        label=n,
         ax=ax[i],
         quantiles=[0.25, 0.5, 0.75],
-        plot_kwargs={
-            "color": "darkcoral",
-        },
+        plot_kwargs={"color": "darkcoral", "label": n},
         fill_kwargs={"alpha": 0.3, "color": "firebrick"},
-        # rug=True,
     )
 
 plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
 plt.close()
 
 # fig, ax = plt.subplots(1,1)
-az.plot_trace(trace)
-plt.savefig(RESULTS_FOLDER / "damage_model_posterior.png", dpi=600)
-plt.close()
+# az.plot_trace(trace)
+# plt.savefig(RESULTS_FOLDER / "damage_model_posterior.png", dpi=600)
+# plt.close()
 
 # fig, ax = plt.subplots(1,1)
 # az.plot_ppc(ppc, ax=ax)

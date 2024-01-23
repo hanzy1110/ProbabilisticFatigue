@@ -28,10 +28,10 @@ PLOT_DIR = BASE_PATH / "plots"
 
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 CYCLING_HOURS = 500
-N_YEARS = 5
+N_YEARS = 20
 N_DISTINCT_LOADS = 32
 
-RANDOM_SEED = 9927
+RANDOM_SEED = 3312
 rng = np.random.default_rng(RANDOM_SEED)
 az.style.use("arviz-darkgrid")
 
