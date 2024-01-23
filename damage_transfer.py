@@ -77,6 +77,7 @@ if not os.path.exists(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc"):
     trace = nutpie.sample(compiled_model, draws=1400, tune=1000, chains=4)
     az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "DAMAGE_MODEL_TRACE.nc")
 else:
+    print("LOADING TRACE")
     trace = az.from_netcdf(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc")
 
 partial_names = [f"damage_{i}-{i-1}" for i in range(1, N_YEARS)]
@@ -95,6 +96,7 @@ if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
         ppc = pm.sample_posterior_predictive(trace, var_names=names)
         az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
 else:
+    print("LOADING PPC")
     ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
 
 fig, ax = plt.subplots(len(names))
