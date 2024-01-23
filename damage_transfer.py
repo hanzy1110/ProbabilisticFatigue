@@ -88,7 +88,7 @@ if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
             if i == 0:
                 damage_prev = damage_model.named_vars[names[0]]
             else:
-                damage_prev = damage_model.named_vars[partial_names[i]]
+                damage_prev = damage_model.named_vars[partial_names[i - 1]]
             # name = f"damage_{i}-{i-1}"
             # names.append(name)
             damage = damage_model.named_vars.get(n)
