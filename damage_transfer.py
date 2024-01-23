@@ -114,7 +114,7 @@ for i, n in enumerate(partial_names):
             "color": "darkcoral",
         },
         fill_kwargs={"alpha": 0.3, "color": "firebrick"},
-        rug=True,
+        # rug=True,
     )
 
 plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
