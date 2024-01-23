@@ -5,6 +5,8 @@ import nutpie
 import numpy as np
 import arviz as az
 import matplotlib.pyplot as plt
+import scienceplots
+plt.style.use(["science", "ieee"])
 
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_DIR = BASE_PATH / "data"
@@ -15,7 +17,6 @@ CYCLING_HOURS = 100
 N_YEARS = 5
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 MAX_SAMPLES = 50000
-year, i = 0, 13
 nbatches = 100
 
 
@@ -70,30 +71,33 @@ with pm.Model() as damage_model:
             # dims=("N_YEARS", "obs"),
         )
 
+if not os.path.exists(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc"):
+    compiled_model = nutpie.compile_pymc_model(damage_model)
+    trace = nutpie.sample(compiled_model, draws=1400, tune=1000, chains=4)
+    az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "DAMAGE_MODEL_TRACE.nc")
+else:
+    trace = az.from_netcdf(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc")
 
-compiled_model = nutpie.compile_pymc_model(damage_model)
-trace = nutpie.sample(compiled_model, draws=1400, tune=1000, chains=4)
-az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "DAMAGE_MODEL_TRACE.nc")
-# with damage_model:
-#     ppc = pm.sample_posterior_predictive(
-#         trace,
-#     )
-
-names = []
-with damage_model:
-    for j, i in enumerate(range(1, N_YEARS)):
-        if i == 1:
-            damage_prev = damage_model.named_vars.get(f"damage_{i-1}")
-        else:
-            damage_prev = damage_model.named_vars.get(names[j - 1])
-        name = f"damage_{i}-{i-1}"
-        names.append(name)
-        damage = damage_model.named_vars.get(f"damage_{i}")
-        d = pm.Deterministic(name, damage + damage_prev)
-
-    ppc = pm.sample_posterior_predictive(trace, var_names=names)
+names = [f"damage_{i}-{i-1}" for i in range(1,N_YEARS)]
+if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
+    with damage_model:
+        for j, i in enumerate(range(1, N_YEARS)):
+            if i == 1:
+                damage_prev = damage_model.named_vars.get(f"damage_{i-1}")
+            else:
+                damage_prev = damage_model.named_vars.get(names[j - 1])
+            # name = f"damage_{i}-{i-1}"
+            # names.append(name)
+            damage = damage_model.named_vars.get(f"damage_{i}")
+            d = pm.Deterministic(names[i], damage + damage_prev)
+        ppc = pm.sample_posterior_predictive(trace, var_names=names)
+        az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
+else:
+    ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
 
 fig, ax = plt.subplots(len(names))
+fig.set_size_inches(3.1, 6.3)
+plt.subplots_adjust(wspace=0.03175)
 for i, n in enumerate(names):
     d = ppc.posterior_predictive[n]
     az.plot_dist(d, color="C1", label=n, ax=ax[i])
