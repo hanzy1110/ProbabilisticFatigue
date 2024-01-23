@@ -86,7 +86,7 @@ with damage_model:
             damage_prev = damage_model.named_vars.get(f"damage_{i-1}")
         else:
             damage_prev = damage_model.named_vars.get(names[j - 1])
-        name = "damage_{i}-{i-1}"
+        name = f"damage_{i}-{i-1}"
         names.append(name)
         damage = damage_model.named_vars.get(f"damage_{i}")
         d = pm.Deterministic(name, damage + damage_prev)
