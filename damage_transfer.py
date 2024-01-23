@@ -51,11 +51,18 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
 
 damages = [get_tot_damages(i) for i in range(N_YEARS)]
 tot_damages = np.array([d for d in damages if d is not None], dtype=np.float32)
+coords = {"N_YEARS": tot_damages.shape[0], "obs": tot_damages.shape[1]}
 
-with pm.Model() as damage_model:
-    alpha = pm.Gamma("alpha", alpha=1, beta=1, shape=(N_YEARS,))
-    beta = pm.Gamma("beta", alpha=1, beta=1, shape=(N_YEARS,))
-    damages = pm.Gamma("likelihood", alpha=alpha, beta=beta, observed=tot_damages)
+with pm.Model(coords=coords) as damage_model:
+    alpha = pm.Gamma("alpha", alpha=1, beta=1, dims=("N_YEARS",))
+    beta = pm.Gamma("beta", alpha=1, beta=1, dims=("N_YEARS",))
+    damages = pm.Gamma(
+        "likelihood",
+        alpha=alpha,
+        beta=beta,
+        observed=tot_damages,
+        dims=("N_YEARS", "obs"),
+    )
 
 
 compiled_model = nutpie.compile_pymc_model(damage_model)
