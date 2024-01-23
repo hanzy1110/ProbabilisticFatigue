@@ -51,7 +51,10 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
 
 damages = [get_tot_damages(i) for i in range(N_YEARS)]
 tot_damages = np.array([d for d in damages if d is not None], dtype=np.float32)
-coords = {"N_YEARS": tot_damages.shape[0], "obs": tot_damages.shape[1]}
+coords = {
+    "N_YEARS": np.arange(tot_damages.shape[0]),
+    "obs": np.arange(tot_damages.shape[1]),
+}
 
 with pm.Model(coords=coords) as damage_model:
     alpha = pm.Gamma("alpha", alpha=1, beta=1, dims=("N_YEARS",))
