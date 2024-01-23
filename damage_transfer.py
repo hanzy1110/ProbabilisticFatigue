@@ -82,7 +82,7 @@ else:
 names = [f"damage_{i}-{i-1}" for i in range(1, N_YEARS)]
 if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
     with damage_model:
-        for j, i in enumerate(range(1, N_YEARS)):
+        for j, i in enumerate(range(1, N_YEARS + 1)):
             if i == 1:
                 damage_prev = damage_model.named_vars[f"damage_{i-1}"]
             else:
