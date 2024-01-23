@@ -93,6 +93,14 @@ with damage_model:
 
     ppc = pm.sample_posterior_predictive(trace, var_names=names)
 
+fig, ax = plt.subplots(len(names))
+for i, n in enumerate(names):
+    d = ppc.posterior_predictive[n]
+    az.plot_dist(d, color="C1", label=n, ax=ax[i])
+
+plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
+plt.close()
+
 # fig, ax = plt.subplots(1,1)
 az.plot_trace(trace)
 plt.savefig(RESULTS_FOLDER / "damage_model_posterior.png", dpi=600)
@@ -100,6 +108,6 @@ plt.close()
 
 # fig, ax = plt.subplots(1,1)
 # az.plot_ppc(ppc, ax=ax)
-az.plot_ppc(ppc)
-plt.savefig(RESULTS_FOLDER / "damage_model_ppc.png", dpi=600)
-plt.close()
+# az.plot_ppc(ppc)
+# plt.savefig(RESULTS_FOLDER / "damage_model_ppc.png", dpi=600)
+# plt.close()
