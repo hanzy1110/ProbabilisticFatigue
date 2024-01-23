@@ -79,18 +79,19 @@ if not os.path.exists(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc"):
 else:
     trace = az.from_netcdf(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc")
 
-names = [f"damage_{i}-{i-1}" for i in range(1, N_YEARS)]
+partial_names = [f"damage_{i}-{i-1}" for i in range(1, N_YEARS)]
+names = [f"damage_{i}" for i in range(N_YEARS)]
 if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
     with damage_model:
-        for j, i in enumerate(range(1, N_YEARS + 1)):
-            if i == 1:
-                damage_prev = damage_model.named_vars[f"damage_{i-1}"]
+        for i, n in enumerate(names[1:]):
+            if i == 0:
+                damage_prev = damage_model.named_vars[names[0]]
             else:
-                damage_prev = damage_model.named_vars[names[j - 1]]
+                damage_prev = damage_model.named_vars[partial_names[i]]
             # name = f"damage_{i}-{i-1}"
             # names.append(name)
-            damage = damage_model.named_vars.get(f"damage_{i}")
-            d = pm.Deterministic(names[j], damage + damage_prev)
+            damage = damage_model.named_vars.get(n)
+            d = pm.Deterministic(partial_names[i], damage + damage_prev)
         ppc = pm.sample_posterior_predictive(trace, var_names=names)
         az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
 else:
@@ -99,7 +100,7 @@ else:
 fig, ax = plt.subplots(len(names))
 fig.set_size_inches(3.1, 6.3)
 plt.subplots_adjust(wspace=0.03175)
-for i, n in enumerate(names):
+for i, n in enumerate(partial_names):
     d = ppc.posterior_predictive[n]
     az.plot_dist(d, color="C1", label=n, ax=ax[i])
 
