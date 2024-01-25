@@ -131,7 +131,12 @@ def posterior_sample(damage_model, trace, year_init, year_end):
     partial_names = [f"damage_{i}-{i-1}" for i in partial_year_range]
     names = [f"damage_{i}" for i in year_range]
 
-    if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
+    print(names)
+    print(partial_names)
+
+    ppc_filename = RESULTS_FOLDER / f"damage_posterior_{year_init}_{year_end}.nc"
+
+    if not os.path.exists(ppc_filename):
         with damage_model:
             for i, n in enumerate(names[1:]):
                 if i == 0:
@@ -143,10 +148,10 @@ def posterior_sample(damage_model, trace, year_init, year_end):
                 damage = damage_model.named_vars.get(n)
                 d = pm.Deterministic(partial_names[i], damage + damage_prev)
             ppc = pm.sample_posterior_predictive(trace, var_names=partial_names)
-            az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
+            az.to_netcdf(ppc, ppc_filename)
     else:
         print("LOADING PPC")
-        ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
+        ppc = az.from_netcdf(ppc_filename)
 
     return ppc, partial_names
 
