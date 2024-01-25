@@ -182,7 +182,9 @@ def main(year_init=0, year_end=N_YEARS):
                 fill_kwargs={"alpha": 0.3, "color": "firebrick"},
             )
 
-        plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
+        plt.savefig(
+            RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
+        )
         plt.close()
 
 
