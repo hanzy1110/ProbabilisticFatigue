@@ -95,14 +95,14 @@ def build_damage_model(year_init, year_end):
 
     # with pm.Model(coords=coords) as damage_model:
     with pm.Model() as damage_model:
-        for i in year_range:
+        for j, i in enumerate(year_range):
             alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
             beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
             damages = pm.Gamma(
                 f"damage_{i}",
                 alpha=alpha,
                 beta=beta,
-                observed=tot_damages[i, :],
+                observed=tot_damages[j, :],
             )
 
     return damage_model
