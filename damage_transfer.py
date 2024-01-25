@@ -69,7 +69,7 @@ def get_prev_damage(year_init, year_end):
     d_name = f"damage_{year_init}-{year_init-1}"
     prev_ppc = az.from_netcdf(ppc_filename)
 
-    prev_damage_samples = prev_ppc.posterior_predictive[d_name].mean(dims=("chain",))
+    prev_damage_samples = prev_ppc.posterior_predictive[d_name].mean(dim=("chain",))
 
     return from_posterior(d_name, prev_damage_samples)
 
