@@ -157,8 +157,10 @@ def posterior_sample(damage_model, trace, year_init, year_end):
 
 
 def main(year_init=0, year_end=N_YEARS):
-    for year_batch in window(range(year_init, year_end), 3):
+    for year_batch in window(range(year_init, year_end), 4):
         year_init, year_end = year_batch[0], year_batch[-1]
+
+        print(year_batch)
 
         damage_model = build_damage_model(year_init, year_end)
         trace = sample_model(
