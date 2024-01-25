@@ -57,6 +57,23 @@ def from_posterior(param, samples):
     return Interpolated(param, x, y)
 
 
+def get_prev_damage(year_init, year_end):
+    prev_year_end = year_init + 1
+    prev_year_init = prev_year_end - (year_end - year_init)
+    ppc_filename = (
+        RESULTS_FOLDER / f"damage_posterior_{prev_year_init}_{prev_year_end}.nc"
+    )
+
+    print(f"PPC FILENAME ==> {ppc_filename}")
+
+    d_name = f"damage_{year_init}-{year_init-1}"
+    prev_ppc = az.from_netcdf(ppc_filename)
+
+    prev_damage_samples = prev_ppc.posterior_predictive[d_name]
+
+    return from_posterior(d_name, prev_damage_samples)
+
+
 def get_tot_damages(year) -> np.ndarray:
     tot_damages = None
     for i in range(N_BATCHES):
@@ -140,7 +157,10 @@ def posterior_sample(damage_model, trace, year_init, year_end):
         with damage_model:
             for i, n in enumerate(names[1:]):
                 if i == 0:
-                    damage_prev = damage_model.named_vars[names[0]]
+                    if year_init != 0:
+                        damage_prev = get_prev_damage(year_init, year_end)
+                    else:
+                        damage_prev = damage_model.named_vars[names[0]]
                 else:
                     damage_prev = damage_model.named_vars[partial_names[i - 1]]
                 # name = f"damage_{i}-{i-1}"
