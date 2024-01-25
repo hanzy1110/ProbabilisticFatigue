@@ -1,11 +1,16 @@
 import os
 import pathlib
+import fire
 import pymc as pm
 import nutpie
 import numpy as np
 import arviz as az
 import matplotlib.pyplot as plt
+import collections, itertools
 import scienceplots
+
+from scipy import stats
+from pymc.distributions import Interpolated
 
 plt.style.use(["science", "ieee"])
 
@@ -13,17 +18,47 @@ BASE_PATH = pathlib.Path(__file__).parent
 DATA_DIR = BASE_PATH / "data"
 RESULTS_FOLDER = BASE_PATH / "RESULTS"
 PLOT_DIR = BASE_PATH / "plots"
-
-CYCLING_HOURS = 100
-N_YEARS = 20
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 MAX_SAMPLES = 25000
-nbatches = 100
+
+N_YEARS = 20
+N_BATCHES = 100
 
 
-def get_tot_damages(year, nbatches=100) -> np.ndarray:
+n_min = 1
+n_max = 100
+n_batches = 5
+
+def window(it, winsize, step=2):
+    """Sliding window iterator."""
+    it=iter(it)  # Ensure we have an iterator
+    l=collections.deque(itertools.islice(it, winsize))
+    while 1:  # Continue till StopIteration gets raised.
+        try:
+            yield tuple(l)
+            for i in range(step):
+                l.append(next(it))
+                l.popleft()
+        except StopIteration as e:
+            return
+
+
+def from_posterior(param, samples):
+    smin, smax = np.min(samples), np.max(samples)
+    width = smax - smin
+    x = np.linspace(smin, smax, 100)
+    y = stats.gaussian_kde(samples)(x)
+
+    # what was never sampled should have a small probability but not 0,
+    # so we'll extend the domain and use linear approximation of density on it
+    x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
+    y = np.concatenate([[0], y, [0]])
+    return Interpolated(param, x, y)
+
+
+def get_tot_damages(year) -> np.ndarray:
     tot_damages = None
-    for i in range(nbatches):
+    for i in range(N_BATCHES):
         # print(f"BATCH NUMBER : {i}")
 
         try:
@@ -52,77 +87,97 @@ def get_tot_damages(year, nbatches=100) -> np.ndarray:
     return tot_damages
 
 
-damages = [get_tot_damages(i) for i in range(N_YEARS)]
-tot_damages = np.array([d for d in damages if d is not None], dtype=np.float32)
-coords = {
-    "N_YEARS": np.arange(tot_damages.shape[0]),
-    "obs": np.arange(tot_damages.shape[1]),
-}
+def build_damage_model(year_init, year_end):
+    year_range = range(year_init, year_end)
+    damages = [get_tot_damages(i) for i in year_range]
+    tot_damages = np.array([d for d in damages if d is not None], dtype=np.float32)
 
-# with pm.Model(coords=coords) as damage_model:
-with pm.Model() as damage_model:
-    for i in coords["N_YEARS"]:
-        alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
-        beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
-        damages = pm.Gamma(
-            f"damage_{i}",
-            alpha=alpha,
-            beta=beta,
-            observed=tot_damages[i, :],
-            # dims=("N_YEARS", "obs"),
+    # with pm.Model(coords=coords) as damage_model:
+    with pm.Model() as damage_model:
+        for i in year_range:
+            alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
+            beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
+            damages = pm.Gamma(
+                f"damage_{i}",
+                alpha=alpha,
+                beta=beta,
+                observed=tot_damages[i, :],
+            )
+
+    return damage_model
+
+
+def sample_model(damage_model, draws, year_init, year_end):
+    filename = RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE_{year_init}_{year_end}.nc"
+
+    if not os.path.exists(filename):
+        compiled_model = nutpie.compile_pymc_model(damage_model)
+        trace = nutpie.sample(compiled_model, draws=draws, tune=1000, chains=4)
+        az.to_netcdf(
+            data=trace,
+            filenme=filename,
         )
+    else:
+        print("LOADING TRACE")
+        trace = az.from_netcdf(filename)
 
-if not os.path.exists(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc"):
-    compiled_model = nutpie.compile_pymc_model(damage_model)
-    trace = nutpie.sample(compiled_model, draws=1400, tune=1000, chains=4)
-    az.to_netcdf(data=trace, filename=RESULTS_FOLDER / "DAMAGE_MODEL_TRACE.nc")
-else:
-    print("LOADING TRACE")
-    trace = az.from_netcdf(RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE.nc")
+    return trace
 
-partial_names = [f"damage_{i}-{i-1}" for i in range(1, N_YEARS)]
-names = [f"damage_{i}" for i in range(N_YEARS)]
-if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
-    with damage_model:
-        for i, n in enumerate(names[1:]):
-            if i == 0:
-                damage_prev = damage_model.named_vars[names[0]]
-            else:
-                damage_prev = damage_model.named_vars[partial_names[i - 1]]
-            # name = f"damage_{i}-{i-1}"
-            # names.append(name)
-            damage = damage_model.named_vars.get(n)
-            d = pm.Deterministic(partial_names[i], damage + damage_prev)
-        ppc = pm.sample_posterior_predictive(trace, var_names=partial_names)
-        az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
-else:
-    print("LOADING PPC")
-    ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
 
-fig, ax = plt.subplots(len(partial_names))
-fig.set_size_inches(3.1, 6.3)
-plt.subplots_adjust(wspace=0.05175)
-for i, n in enumerate(partial_names):
-    d = ppc.posterior_predictive[n]
-    az.plot_dist(
-        d,
-        color="C1",
-        ax=ax[i],
-        quantiles=[0.25, 0.5, 0.75],
-        plot_kwargs={"color": "darkcoral", "label": n},
-        fill_kwargs={"alpha": 0.3, "color": "firebrick"},
-    )
+def posterior_sample(damage_model, trace, year_init, year_end):
+    partial_year_range = range(year_init + 1, year_end)
+    year_range = range(year_init, year_end)
+    partial_names = [f"damage_{i}-{i-1}" for i in partial_year_range]
+    names = [f"damage_{i}" for i in year_range]
 
-plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
-plt.close()
+    if not os.path.exists(RESULTS_FOLDER / f"damage_posterior.nc"):
+        with damage_model:
+            for i, n in enumerate(names[1:]):
+                if i == 0:
+                    damage_prev = damage_model.named_vars[names[0]]
+                else:
+                    damage_prev = damage_model.named_vars[partial_names[i - 1]]
+                # name = f"damage_{i}-{i-1}"
+                # names.append(name)
+                damage = damage_model.named_vars.get(n)
+                d = pm.Deterministic(partial_names[i], damage + damage_prev)
+            ppc = pm.sample_posterior_predictive(trace, var_names=partial_names)
+            az.to_netcdf(ppc, RESULTS_FOLDER / f"damage_posterior.nc")
+    else:
+        print("LOADING PPC")
+        ppc = az.from_netcdf(RESULTS_FOLDER / f"damage_posterior.nc")
 
-# fig, ax = plt.subplots(1,1)
-# az.plot_trace(trace)
-# plt.savefig(RESULTS_FOLDER / "damage_model_posterior.png", dpi=600)
-# plt.close()
+    return ppc, partial_names
 
-# fig, ax = plt.subplots(1,1)
-# az.plot_ppc(ppc, ax=ax)
-# az.plot_ppc(ppc)
-# plt.savefig(RESULTS_FOLDER / "damage_model_ppc.png", dpi=600)
-# plt.close()
+
+def main(year_init=0, year_end=N_YEARS):
+
+    for year_batch in window(range(year_init, year_end),3):
+        year_init, year_end = year_batch[0], year_batch[-1]
+
+        damage_model = build_damage_model(year_init, year_end)
+        trace = sample_model(
+            damage_model, year_init=year_init, year_end=year_end, draws=1000
+        )
+        ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
+
+        fig, ax = plt.subplots(len(partial_names))
+        fig.set_size_inches(3.1, 6.3)
+        plt.subplots_adjust(wspace=0.05175)
+        for i, n in enumerate(partial_names):
+            d = ppc.posterior_predictive[n]
+            az.plot_dist(
+                d,
+                color="C1",
+                ax=ax[i],
+                quantiles=[0.25, 0.5, 0.75],
+                plot_kwargs={"color": "darkcoral", "label": n},
+                fill_kwargs={"alpha": 0.3, "color": "firebrick"},
+            )
+
+        plt.savefig(RESULTS_FOLDER / "partial_damage.png", dpi=600)
+        plt.close()
+
+
+if __name__ == "__main__":
+    fire.Fire(main)

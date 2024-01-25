@@ -6,7 +6,8 @@ import re
 import pprint
 from typing import Dict
 import numpy as np
-import pytensor
+
+# import pytensor
 import arviz as az
 import jax.numpy as jnp
 from jax import Array, devices, local_devices
