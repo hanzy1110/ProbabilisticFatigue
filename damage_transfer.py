@@ -29,10 +29,11 @@ n_min = 1
 n_max = 100
 n_batches = 5
 
+
 def window(it, winsize, step=2):
     """Sliding window iterator."""
-    it=iter(it)  # Ensure we have an iterator
-    l=collections.deque(itertools.islice(it, winsize))
+    it = iter(it)  # Ensure we have an iterator
+    l = collections.deque(itertools.islice(it, winsize))
     while 1:  # Continue till StopIteration gets raised.
         try:
             yield tuple(l)
@@ -115,7 +116,7 @@ def sample_model(damage_model, draws, year_init, year_end):
         trace = nutpie.sample(compiled_model, draws=draws, tune=1000, chains=4)
         az.to_netcdf(
             data=trace,
-            filenme=filename,
+            filename=filename,
         )
     else:
         print("LOADING TRACE")
@@ -151,8 +152,7 @@ def posterior_sample(damage_model, trace, year_init, year_end):
 
 
 def main(year_init=0, year_end=N_YEARS):
-
-    for year_batch in window(range(year_init, year_end),3):
+    for year_batch in window(range(year_init, year_end), 3):
         year_init, year_end = year_batch[0], year_batch[-1]
 
         damage_model = build_damage_model(year_init, year_end)
