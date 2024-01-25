@@ -199,12 +199,12 @@ def main(year_init=0, year_end=N_YEARS):
             d = ppc.posterior_predictive[n]
             az.plot_dist(
                 d,
-                color="C1",
                 ax=ax[i],
                 quantiles=[0.25, 0.5, 0.75],
                 plot_kwargs={"color": "darkcoral", "label": n},
                 fill_kwargs={"alpha": 0.3, "color": "firebrick"},
             )
+            ax[i].set_xlabel(n)
 
         plt.savefig(
             RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
