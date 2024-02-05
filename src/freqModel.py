@@ -129,7 +129,11 @@ class LoadModel:
             data = pd.read_excel(data_path, sheet_name=None)
             data = list(map(get_cycles_amps, data.values()))
             data_joined = reduce(join_hists, data, None)
-            cycles, amplitudes = data_joined["cycles"], data_joined["amplitudes"] * 1e6
+
+            cycles, amplitudes = (
+                data_joined["cycles"] * 25400,
+                data_joined["amplitudes"] * 1e6,
+            )
         return cycles, amplitudes
 
     def NormalizeData(self, plotExp: bool = True):
