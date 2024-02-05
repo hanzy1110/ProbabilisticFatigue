@@ -17,6 +17,13 @@ RANDOM_SEED = 8927
 rng = np.random.default_rng(RANDOM_SEED)
 
 
+def get_cycles_amps(df: pd.DataFrame):
+    cycles = np.array(data.iloc[-1].values[1:], dtype=np.float64)
+    amplitudes = np.array(list(data.columns)[1:], np.float64)
+
+    return {"cycles": cycles, "amplitudes": amplitudes}
+
+
 def join_hists(new, acc):
     if new is not None:
         amplitudes = acc["amplitudes"]
@@ -120,7 +127,8 @@ class LoadModel:
             amplitudes = np.array(list(data.columns)[1:], np.float64)
         else:
             data = pd.read_excel(data_path, sheet_name=None)
-            data_joined = list(reduce(join_hists, list(data.values()), None))[0]
+            data = list(map(get_cycles_amps, data.values()))
+            data_joined = list(reduce(join_hists, data, None))[0]
             cycles, amplitudes = data_joined["cycles"], data_joined["amplitudes"] * 1e6
         return cycles, amplitudes
 
