@@ -18,7 +18,7 @@ rng = np.random.default_rng(RANDOM_SEED)
 
 
 def join_hists(new, acc):
-    if new:
+    if new is not None:
         amplitudes = acc["amplitudes"]
         cycles = acc["cycles"]
         for i, c in enumerate(new["cycles"]):
