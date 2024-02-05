@@ -120,7 +120,7 @@ class LoadModel:
             amplitudes = np.array(list(data.columns)[1:], np.float64)
         else:
             data = pd.read_excel(data_path, sheet_name=None)
-            data_joined = list(reduce(join_hists, list(data.values()), initial=None))[0]
+            data_joined = list(reduce(join_hists, list(data.values()), None))[0]
             cycles, amplitudes = data_joined["cycles"], data_joined["amplitudes"] * 1e6
         return cycles, amplitudes
 
