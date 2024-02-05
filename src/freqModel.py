@@ -128,7 +128,7 @@ class LoadModel:
         else:
             data = pd.read_excel(data_path, sheet_name=None)
             data = list(map(get_cycles_amps, data.values()))
-            data_joined = list(reduce(join_hists, data, None))[0]
+            data_joined = reduce(join_hists, data, None)
             cycles, amplitudes = data_joined["cycles"], data_joined["amplitudes"] * 1e6
         return cycles, amplitudes
 
