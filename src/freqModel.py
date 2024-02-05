@@ -19,7 +19,7 @@ rng = np.random.default_rng(RANDOM_SEED)
 
 def get_cycles_amps(df: pd.DataFrame):
     cycles = np.array(df.iloc[-1].values[1:], dtype=np.float64)
-    amplitudes = np.array(list(df.columns)[1:], np.float64)
+    amplitudes = np.array(list(df.columns)[1:-1], np.float64)
 
     return {"cycles": cycles, "amplitudes": amplitudes}
 
