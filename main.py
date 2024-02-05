@@ -123,7 +123,8 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
 
     damageCal = DamageCalculation(
         wohlerPath=RESULTS_FOLDER / "WOHLER",
-        loadObserved=DATA_DIR / "800369.csv",
+        # loadObserved=DATA_DIR / "800369.csv",
+        loadObserved=DATA_DIR / "1980MedicionesdeCampo.xlsx",
         WohlerObserved=DATA_DIR / "SN_curve.mat",
         loadPath=RESULTS_FOLDER / "LOADS",
         cableProps=props,
