@@ -1,3 +1,4 @@
+from functools import reduce
 import os
 import pathlib
 import pymc as pm
@@ -14,6 +15,23 @@ from .stressModel import CableProps
 
 RANDOM_SEED = 8927
 rng = np.random.default_rng(RANDOM_SEED)
+
+
+def join_hists(new, acc):
+    if new:
+        amplitudes = acc["amplitudes"]
+        cycles = acc["cycles"]
+        for i, c in enumerate(new["cycles"]):
+            mask = np.isclose(cycles, c)
+            if any(mask):
+                amplitudes[mask] += new["amplitudes"][i]
+            else:
+                cycles = np.hstack([cycles, c])
+                amplitudes = np.hstack([amplitudes, new["amplitudes"][i]])
+
+        sorted_idxs = np.argsort(cycles)
+        return {"cycles": np.sort(cycles), "amplitudes": amplitudes[sorted_idxs]}
+    return acc
 
 
 def hist_sample(hist, n):
@@ -92,10 +110,19 @@ class LoadModel:
         self.ydata = df[df["tension"] == Tpercentage]
         self.cable = CableProps(**cableProps)
 
-        data = pd.read_csv(observedDataPath)
-        cycles = np.array(data.iloc[-1].values[1:], dtype=np.float64)
-        amplitudes = np.array(list(data.columns)[1:], np.float64)
+        cycles, amplitudes = self.parse_exp_data(observedDataPath)
         self.amplitudes_sample = hist_sample([cycles, amplitudes], n=2500)
+
+    def parse_exp_data(self, data_path: pathlib.Path):
+        if "csv" in data_path.suffix:
+            data = pd.read_csv(data_path)
+            cycles = np.array(data.iloc[-1].values[1:], dtype=np.float64)
+            amplitudes = np.array(list(data.columns)[1:], np.float64)
+        else:
+            data = pd.read_excel(data_path)
+            data_joined = list(reduce(join_hists, list(data.values()), initial=None))[0]
+            cycles, amplitudes = data_joined["cycles"], data_joined["amplitudes"] * 1e6
+        return cycles, amplitudes
 
     def NormalizeData(self, plotExp: bool = True):
         # frequency = np.array(data['Frequency [Hz]'].values, dtype=np.float64).reshape(-1,1 )
