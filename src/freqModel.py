@@ -1,6 +1,7 @@
 from functools import reduce
 import os
 import pathlib
+from pandas.tseries import frequencies
 import pymc as pm
 import nutpie
 import arviz as az
@@ -17,6 +18,39 @@ RANDOM_SEED = 8927
 rng = np.random.default_rng(RANDOM_SEED)
 
 
+def parse_exp_data_freq(data_path: pathlib.Path):
+    if "csv" in data_path.suffix:
+        data = pd.read_csv(data_path)
+        data.set_index(data["Frequency [Hz]"], inplace=True)
+        data.drop(data.index.values[-1], inplace=True)
+        freq_prev = np.array(data["Frequency [Hz]"].values)
+        frequency_density = np.fromiter(
+            map(lambda x: get_freq_density(x, data=data), freq_prev), dtype=np.float64
+        )
+
+        print(f"freq_prev: {freq_prev}")
+        print(f"frequency_density: {frequency_density}")
+        freq_prev = np.array(freq_prev, dtype=np.float64)
+
+    else:
+        data = pd.read_excel(data_path, sheet_name=None)
+        data = list(map(get_cycles_freqs, data.values()))
+        data_joined = reduce(lambda x, y: join_hists(x, y, "frequencies"), data, None)
+
+        frequency_density, freq_prev = (
+            data_joined["cycles"] * 1e6,
+            data_joined["frequencies"],
+        )
+
+    return frequency_density, freq_prev
+
+
+def get_cycles_freqs(df: pd.DataFrame):
+    cycles = np.array(df["Mc (freq)"], dtype=np.float64)
+    frequencies = np.array(df[df.cols[0]], np.float64)
+    return {"cycles": cycles, "frequencies": frequencies}
+
+
 def get_cycles_amps(df: pd.DataFrame):
     cycles = np.array(df.iloc[-1].values[1:-1], dtype=np.float64)
     amplitudes = np.array(list(df.columns)[1:-1], np.float64)
@@ -24,20 +58,20 @@ def get_cycles_amps(df: pd.DataFrame):
     return {"cycles": cycles, "amplitudes": amplitudes}
 
 
-def join_hists(new, acc):
+def join_hists(new, acc, label="amplitudes"):
     if new is not None:
-        amplitudes = acc["amplitudes"]
+        amplitudes = acc[label]
         cycles = acc["cycles"]
         for i, c in enumerate(new["cycles"]):
             mask = np.isclose(cycles, c)
             if any(mask):
-                amplitudes[mask] += new["amplitudes"][i]
+                amplitudes[mask] += new[label][i]
             else:
                 cycles = np.hstack([cycles, c])
-                amplitudes = np.hstack([amplitudes, new["amplitudes"][i]])
+                amplitudes = np.hstack([amplitudes, new[label][i]])
 
         sorted_idxs = np.argsort(cycles)
-        return {"cycles": np.sort(cycles), "amplitudes": amplitudes[sorted_idxs]}
+        return {"cycles": np.sort(cycles), label: amplitudes[sorted_idxs]}
     return acc
 
 
@@ -61,17 +95,7 @@ def get_freq_density(freq, data):
 
 def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
     data = pd.read_csv(freq_data)
-    # data['Frequency [Hz]'] = np.array(data['Frequency [Hz]'].values, dtype=np.int64)
-    data.set_index(data["Frequency [Hz]"], inplace=True)
-    data.drop(data.index.values[-1], inplace=True)
-
-    freq_prev = np.array(data["Frequency [Hz]"].values)
-    frequency_density = np.fromiter(
-        map(lambda x: get_freq_density(x, data=data), freq_prev), dtype=np.float64
-    )
-    print(f"freq_prev: {freq_prev}")
-    print(f"frequency_density: {frequency_density}")
-    freq_prev = np.array(freq_prev, dtype=np.float64)
+    frequency_density, freq_prev = parse_exp_data_freq(freq_data)
     frequency = hist_sample([frequency_density, freq_prev], n=10000)
 
     return frequency
@@ -131,8 +155,8 @@ class LoadModel:
             data_joined = reduce(join_hists, data, None)
 
             cycles, amplitudes = (
-                data_joined["cycles"] * 25400,
-                data_joined["amplitudes"] * 1e6,
+                data_joined["cycles"] * 1e6,
+                data_joined["amplitudes"] * 25400,
             )
         return cycles, amplitudes
 
