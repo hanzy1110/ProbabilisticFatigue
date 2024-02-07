@@ -213,8 +213,8 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
             d_mean = d.mean(dim=("chain", "draw"))
             N_mcs = len(d_mean)
-            p_failures.append(getPFailure(d_mean))
-            v_coeffs.append(getVarCoeff(d_mean, N_mcs))
+            p_failures.append(getPFailure(d_mean.values))
+            v_coeffs.append(getVarCoeff(d_mean.values, N_mcs))
 
             if plot:
                 az.plot_dist(
