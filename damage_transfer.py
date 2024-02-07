@@ -23,7 +23,7 @@ PLOT_DIR = BASE_PATH / "plots"
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 MAX_SAMPLES = 25000
 
-N_YEARS = 50
+N_YEARS = 80
 N_BATCHES = 100
 
 
@@ -222,7 +222,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
                     ax=ax[i],
                     quantiles=[0.25, 0.5, 0.75],
                     plot_kwargs={"color": "hotpink", "label": n},
-                    fill_kwargs={"alpha": 0.3, "color": "palegreen"},
+                    fill_kwargs={"alpha": 0.1, "color": "palegreen"},
                 )
                 ax[i].set_xlabel(n)
                 ax[i].set_xlim(0, None)
