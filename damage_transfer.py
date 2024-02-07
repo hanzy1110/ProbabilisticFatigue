@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import collections, itertools
 import scienceplots
 
+import jax.numpy as jnp
+
 from scipy import stats
 from pymc.distributions import Interpolated
 
@@ -28,6 +30,14 @@ N_BATCHES = 100
 n_min = 1
 n_max = 100
 n_batches = 5
+
+
+def getPFailure(damages: Array):
+    return len(damages[jnp.isclose(damages, 1)]) / len(damages)
+
+
+def getVarCoeff(p_failures, N_mcs):
+    return np.sqrt((1 - p_failures) / (N_mcs * p_failures))
 
 
 def window(it, winsize, step=2):
@@ -179,7 +189,9 @@ def posterior_sample(damage_model, trace, year_init, year_end):
     return ppc, partial_names
 
 
-def main(year_init=0, year_end=N_YEARS):
+def main(year_init=0, year_end=N_YEARS, plot=False):
+    p_failures = []
+    v_coeffs = []
     for year_batch in window(range(year_init, year_end), 4):
         year_init, year_end = year_batch[0], year_batch[-1]
 
@@ -198,19 +210,37 @@ def main(year_init=0, year_end=N_YEARS):
         plt.subplots_adjust(wspace=0.05175)
         for i, n in enumerate(partial_names):
             d = ppc.posterior_predictive[n]
-            az.plot_dist(
-                d,
-                ax=ax[i],
-                quantiles=[0.25, 0.5, 0.75],
-                plot_kwargs={"color": "hotpink", "label": n},
-                fill_kwargs={"alpha": 0.3, "color": "palegreen"},
-            )
-            ax[i].set_xlabel(n)
-            ax[i].set_xlim(0, None)
 
-        plt.savefig(
-            RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
-        )
+            d_mean = d.mean(dim=("chain", "draw"))
+            N_mcs = len(d_mean)
+            p_failures.append(getPFailure(d_mean))
+            v_coeffs.append(getVarCoeff(d_mean, N_mcs))
+
+            if plot:
+                az.plot_dist(
+                    d,
+                    ax=ax[i],
+                    quantiles=[0.25, 0.5, 0.75],
+                    plot_kwargs={"color": "hotpink", "label": n},
+                    fill_kwargs={"alpha": 0.3, "color": "palegreen"},
+                )
+                ax[i].set_xlabel(n)
+                ax[i].set_xlim(0, None)
+
+        if plot:
+            plt.savefig(
+                RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
+            )
+            plt.close()
+        fig, (tax, bax) = plt.subplots(2, 1)
+        fig.set_size_inches(3.3, 6.3)
+        tax.plot(p_failures)
+        tax.set_xlabel("Year")
+        tax.set_ylabel(r"$\mathrm{P}_{failure}$")
+        bax.plot(v_coeffs)
+        bax.set_xlabel("Year")
+        bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
+        plt.savefig(RESULTS_FOLDER / "p_failure_plot.png", dpi=600)
         plt.close()
 
 
