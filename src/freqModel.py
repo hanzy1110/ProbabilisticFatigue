@@ -94,7 +94,7 @@ def get_freq_density(freq, data):
 
 
 def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
-    data = pd.read_csv(freq_data)
+    # data = pd.read_csv(freq_data)
     frequency_density, freq_prev = parse_exp_data_freq(freq_data)
     frequency = hist_sample([frequency_density, freq_prev], n=10000)
 
