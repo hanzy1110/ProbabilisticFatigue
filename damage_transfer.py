@@ -32,7 +32,7 @@ n_max = 100
 n_batches = 5
 
 
-def getPFailure(damages: Array):
+def getPFailure(damages):
     return len(damages[jnp.isclose(damages, 1)]) / len(damages)
 
 
