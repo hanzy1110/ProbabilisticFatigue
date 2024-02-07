@@ -184,7 +184,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
 
         tot_damages = None
         for i in range(nbatches):
-            print(f"BATCH NUMBER : {i}")
+            # print(f"BATCH NUMBER : {i}")
 
             try:
                 with open(
