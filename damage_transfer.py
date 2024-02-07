@@ -53,7 +53,7 @@ def from_posterior(param, samples):
     # what was never sampled should have a small probability but not 0,
     # so we'll extend the domain and use linear approximation of density on it
     # x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
-    x = np.concatenate([[0], x, [x[-1] + 3 * width]])
+    x = np.concatenate([[x[0] - 6 * width], x, [x[-1] + 6 * width]])
     y = np.concatenate([[0], y, [0]])
     return Interpolated(param, x, y)
 

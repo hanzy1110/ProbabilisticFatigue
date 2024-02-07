@@ -141,7 +141,10 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     # damageCal.sample_model('loads', 2000)
 
     cycles_per_year = total_cycles_per_year(
-        CYCLING_HOURS, N_YEARS, DATA_DIR / "800369.csv"
+        CYCLING_HOURS,
+        N_YEARS,
+        # DATA_DIR / "800369.csv"
+        DATA_DIR / "1980MedicionesdeCampo.xlsx",
     )
 
     fig, ax = plt.subplots(1, 1)
