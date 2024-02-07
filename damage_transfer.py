@@ -240,7 +240,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         bax.plot(v_coeffs)
         bax.set_xlabel("Year")
         bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
-        plt.savefig(RESULTS_FOLDER / "p_failure_plot.png", dpi=600)
+        plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
         plt.close()
 
 
