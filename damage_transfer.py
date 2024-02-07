@@ -202,8 +202,8 @@ def main(year_init=0, year_end=N_YEARS):
                 d,
                 ax=ax[i],
                 quantiles=[0.25, 0.5, 0.75],
-                plot_kwargs={"color": "darkcoral", "label": n},
-                fill_kwargs={"alpha": 0.3, "color": "firebrick"},
+                plot_kwargs={"color": "hotpink", "label": n},
+                fill_kwargs={"alpha": 0.3, "color": "palegreen"},
             )
             ax[i].set_xlabel(n)
             ax[i].set_xlim(0, None)
