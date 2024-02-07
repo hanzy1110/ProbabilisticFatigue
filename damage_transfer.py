@@ -53,7 +53,7 @@ def from_posterior(param, samples):
     # what was never sampled should have a small probability but not 0,
     # so we'll extend the domain and use linear approximation of density on it
     # x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
-    x = np.concatenate([[x[0] - 6 * width], x, [x[-1] + 6 * width]])
+    x = np.concatenate([[x[0] - 2 * width], x, [x[-1] + 2 * width]])
     y = np.concatenate([[0], y, [0]])
     return Interpolated(param, x, y)
 
@@ -206,7 +206,7 @@ def main(year_init=0, year_end=N_YEARS):
                 fill_kwargs={"alpha": 0.3, "color": "firebrick"},
             )
             ax[i].set_xlabel(n)
-            ax[i].set_xlim(0, 3)
+            ax[i].set_xlim(0, None)
 
         plt.savefig(
             RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
