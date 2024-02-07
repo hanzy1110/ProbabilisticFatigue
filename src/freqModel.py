@@ -47,7 +47,7 @@ def parse_exp_data_freq(data_path: pathlib.Path):
 
 def get_cycles_freqs(df: pd.DataFrame):
     cycles = np.array(df["Mc (freq)"], dtype=np.float64)
-    frequencies = np.array(df[df.cols[0]], np.float64)
+    frequencies = np.array(df[df.columns[0]], np.float64)
     return {"cycles": cycles, "frequencies": frequencies}
 
 
