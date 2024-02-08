@@ -239,7 +239,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         # plt.subplots_adjust(wspace=0.05175)
 
         with Pool(len(partial_names)) as pool:
-            args = [(n, ppc) for n in partial_names]
+            args = [(n, ppc, plot) for n in partial_names]
             results = pool.starmap(post_process, args)
 
         p_failures = [r["p_failure"] for r in results]
