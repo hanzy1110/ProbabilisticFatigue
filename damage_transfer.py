@@ -14,6 +14,8 @@ import jax.numpy as jnp
 from scipy import stats
 from pymc.distributions import Interpolated
 
+from multiprocessing import Pool
+
 plt.style.use(["science", "ieee"])
 
 BASE_PATH = pathlib.Path(__file__).parent
@@ -33,7 +35,7 @@ n_batches = 5
 
 
 def getPFailure(damages):
-    return len(damages[jnp.isclose(damages, 1)]) / len(damages)
+    return len(damages[damages > 1]) / len(damages)
 
 
 def getVarCoeff(p_failures, N_mcs):
@@ -189,6 +191,33 @@ def posterior_sample(damage_model, trace, year_init, year_end):
     return ppc, partial_names
 
 
+def post_process(ppc, n, plot):
+    d = ppc.posterior_predictive[n]
+
+    d_mean = d.mean(dim=("chain", "draw"))
+    N_mcs = len(d_mean)
+    p_failures = getPFailure(d_mean.values)
+    v_coeffs = getVarCoeff(d_mean.values, N_mcs)
+
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(3.3, 3.3)
+    if plot:
+        az.plot_dist(
+            d,
+            ax=ax,
+            quantiles=[0.25, 0.5, 0.75],
+            plot_kwargs={"color": "hotpink", "label": n},
+            fill_kwargs={"alpha": 0.1, "color": "palegreen"},
+        )
+        ax.set_xlabel(n)
+        ax.set_xlim(0, None)
+
+        plt.savefig(RESULTS_FOLDER / f"partial_damage_{n}.png", dpi=600)
+        plt.close()
+
+    return {"p_failure": p_failures, "v_coeff": v_coeffs}
+
+
 def main(year_init=0, year_end=N_YEARS, plot=False):
     p_failures = []
     v_coeffs = []
@@ -205,33 +234,16 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         )
         ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
 
-        fig, ax = plt.subplots(len(partial_names))
-        fig.set_size_inches(3.1, 6.3)
-        plt.subplots_adjust(wspace=0.05175)
-        for i, n in enumerate(partial_names):
-            d = ppc.posterior_predictive[n]
+        # fig, ax = plt.subplots(len(partial_names))
+        # fig.set_size_inches(3.1, 6.3)
+        # plt.subplots_adjust(wspace=0.05175)
 
-            d_mean = d.mean(dim=("chain", "draw"))
-            N_mcs = len(d_mean)
-            p_failures.append(getPFailure(d_mean.values))
-            v_coeffs.append(getVarCoeff(d_mean.values, N_mcs))
+        with Pool(len(partial_names)) as pool:
+            args = [(n, ppc) for n in partial_names]
+            results = pool.starmap(post_process, args)
 
-            if plot:
-                az.plot_dist(
-                    d,
-                    ax=ax[i],
-                    quantiles=[0.25, 0.5, 0.75],
-                    plot_kwargs={"color": "hotpink", "label": n},
-                    fill_kwargs={"alpha": 0.1, "color": "palegreen"},
-                )
-                ax[i].set_xlabel(n)
-                ax[i].set_xlim(0, None)
-
-        if plot:
-            plt.savefig(
-                RESULTS_FOLDER / f"partial_damage_{year_init}_{year_end}.png", dpi=600
-            )
-            plt.close()
+        p_failures = [r["p_failure"] for r in results]
+        v_coeffs = [r["v_coeff"] for r in results]
         fig, (tax, bax) = plt.subplots(2, 1)
         fig.set_size_inches(3.3, 6.3)
         tax.plot(p_failures)
