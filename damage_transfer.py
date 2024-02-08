@@ -238,9 +238,10 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         # fig.set_size_inches(3.1, 6.3)
         # plt.subplots_adjust(wspace=0.05175)
 
-        with Pool(len(partial_names)) as pool:
-            args = [(n, ppc, plot) for n in partial_names]
-            results = pool.starmap(post_process, args)
+        # with Pool(len(partial_names)) as pool:
+        args = [(n, ppc, plot) for n in partial_names]
+        # results = pool.starmap(post_process, args)
+        results = list(map(lambda a: post_process(*a), args))
 
         p_failures = [r["p_failure"] for r in results]
         v_coeffs = [r["v_coeff"] for r in results]
