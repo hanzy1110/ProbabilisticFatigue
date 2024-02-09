@@ -247,8 +247,6 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         # results = pool.starmap(post_process, args)
         results = list(map(lambda a: post_process(*a), args))
 
-        with open(RESULTS_FOLDER / "PFAILURES.json") as f:
-            json.dump(results, f)
 
         p_failures = [r["p_failure"] for r in results]
         v_coeffs = [r["v_coeff"] for r in results]
@@ -256,6 +254,9 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         p_failures_total.extend(p_failures)
         v_coeffs_total.extend(v_coeffs)
 
+    results_total = {"p_failures": p_failures_total, "v_coeffs":v_coeffs_total}
+    with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
+        json.dump(results_total, f)
 
     fig, (tax, bax) = plt.subplots(2, 1)
     fig.set_size_inches(3.3, 6.3)
