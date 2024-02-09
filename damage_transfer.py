@@ -66,7 +66,7 @@ def from_posterior(param, samples):
     # what was never sampled should have a small probability but not 0,
     # so we'll extend the domain and use linear approximation of density on it
     # x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
-    x = np.concatenate([[x[0] - 1 * width], x, [x[-1] + 1 * width]])
+    x = np.concatenate([[x[0] - 2 * width], x, [x[-1] + 2 * width]])
     y = np.concatenate([[0], y, [0]])
     return Interpolated(param, x, y)
 
@@ -146,7 +146,7 @@ def sample_model(damage_model, draws, year_init, year_end):
 
     if not os.path.exists(filename):
         compiled_model = nutpie.compile_pymc_model(damage_model)
-        trace = nutpie.sample(compiled_model, draws=draws, tune=1000, chains=4)
+        trace = nutpie.sample(compiled_model, draws=draws, tune=500, chains=2)
         az.to_netcdf(
             data=trace,
             filename=filename,
