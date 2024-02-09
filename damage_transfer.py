@@ -200,6 +200,9 @@ def post_process(ppc, n, plot):
     p_failures = getPFailure(d_mean.values)
     v_coeffs = getVarCoeff(d_mean.values, N_mcs)
 
+    print(f"P_FAILURE ==> {p_failures}")
+    print(f"V_COEFF ==> {v_coeffs}")
+
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 3.3)
     if plot:
@@ -207,8 +210,8 @@ def post_process(ppc, n, plot):
             d,
             ax=ax,
             quantiles=[0.25, 0.5, 0.75],
-            plot_kwargs={"color": "hotpink", "label": n},
-            fill_kwargs={"alpha": 0.1, "color": "palegreen"},
+            plot_kwargs={"color": "firebrick", "label": n},
+            fill_kwargs={"alpha": 0.4, "color": "palegreen"},
         )
         ax.set_xlabel(n)
         ax.set_xlim(0, None)
