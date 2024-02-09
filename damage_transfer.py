@@ -112,10 +112,10 @@ def get_tot_damages(year) -> np.ndarray:
             # print(e)
 
     if tot_damages is not None:
-        print("NAN FRAC ==>")
-        print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
-        print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
-        print(f"TOTAL LEN {len(tot_damages)}")
+        # print("NAN FRAC ==>")
+        # print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
+        # print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
+        # print(f"TOTAL LEN {len(tot_damages)}")
         return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
 
     return tot_damages
@@ -260,9 +260,9 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     tax.plot(p_failures_total)
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
-    bax.plot(v_coeffs_total)
-    bax.set_xlabel("Year")
-    bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
+    # bax.plot(v_coeffs_total)
+    # bax.set_xlabel("Year")
+    # bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
     plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
     plt.close()
 
