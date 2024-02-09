@@ -66,7 +66,7 @@ def from_posterior(param, samples):
     # what was never sampled should have a small probability but not 0,
     # so we'll extend the domain and use linear approximation of density on it
     # x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
-    x = np.concatenate([[x[0] - 2 * width], x, [x[-1] + 2 * width]])
+    x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
     y = np.concatenate([[0], y, [0]])
     return Interpolated(param, x, y)
 
@@ -254,9 +254,6 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         p_failures_total.extend(p_failures)
         v_coeffs_total.extend(v_coeffs)
 
-    results_total = {"p_failures": p_failures_total, "v_coeffs":v_coeffs_total}
-    with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
-        json.dump(results_total, f)
 
     fig, (tax, bax) = plt.subplots(2, 1)
     fig.set_size_inches(3.3, 6.3)
@@ -268,6 +265,10 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
     plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
     plt.close()
+
+    results_total = {"p_failures": p_failures_total, "v_coeffs":v_coeffs_total}
+    with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
+        json.dump(results_total, f)
 
 
 if __name__ == "__main__":
