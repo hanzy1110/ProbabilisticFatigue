@@ -1,4 +1,5 @@
 import os
+import json
 import pathlib
 import fire
 import pymc as pm
@@ -224,14 +225,13 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     for year_batch in window(range(year_init, year_end), 4):
         year_init, year_end = year_batch[0], year_batch[-1]
 
-        print(year_init, year_end)
-
-        print(year_batch)
+        print(f"YEAR_BATCH => {year_batch}")
 
         damage_model = build_damage_model(year_init, year_end)
         trace = sample_model(
             damage_model, year_init=year_init, year_end=year_end, draws=1000
         )
+        print("SAMPLING POSTERIOR ==> ")
         ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
 
         # fig, ax = plt.subplots(len(partial_names))
@@ -239,9 +239,13 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         # plt.subplots_adjust(wspace=0.05175)
 
         # with Pool(len(partial_names)) as pool:
+        print("POST PROCESSING DATA ==> ")
         args = [(ppc, n, plot) for n in partial_names]
         # results = pool.starmap(post_process, args)
         results = list(map(lambda a: post_process(*a), args))
+
+        with open(RESULTS_FOLDER / "PFAILURES.json") as f:
+            json.dump(results, f)
 
         p_failures = [r["p_failure"] for r in results]
         v_coeffs = [r["v_coeff"] for r in results]
