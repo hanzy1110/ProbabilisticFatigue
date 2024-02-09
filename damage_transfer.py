@@ -223,8 +223,8 @@ def post_process(ppc, n, plot):
 
 
 def main(year_init=0, year_end=N_YEARS, plot=False):
-    p_failures = []
-    v_coeffs = []
+    p_failures_total = []
+    v_coeffs_total = []
     for year_batch in window(range(year_init, year_end), 4):
         year_init, year_end = year_batch[0], year_batch[-1]
 
@@ -252,16 +252,21 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
         p_failures = [r["p_failure"] for r in results]
         v_coeffs = [r["v_coeff"] for r in results]
-        fig, (tax, bax) = plt.subplots(2, 1)
-        fig.set_size_inches(3.3, 6.3)
-        tax.plot(p_failures)
-        tax.set_xlabel("Year")
-        tax.set_ylabel(r"$\mathrm{P}_{failure}$")
-        bax.plot(v_coeffs)
-        bax.set_xlabel("Year")
-        bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
-        plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
-        plt.close()
+
+        p_failures_total.extend(p_failures)
+        v_coeffs_total.extend(v_coeffs)
+
+
+    fig, (tax, bax) = plt.subplots(2, 1)
+    fig.set_size_inches(3.3, 6.3)
+    tax.plot(p_failures_total)
+    tax.set_xlabel("Year")
+    tax.set_ylabel(r"$\mathrm{P}_{failure}$")
+    bax.plot(v_coeffs_total)
+    bax.set_xlabel("Year")
+    bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
+    plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
+    plt.close()
 
 
 if __name__ == "__main__":
