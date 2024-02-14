@@ -36,7 +36,12 @@ n_batches = 5
 
 
 def getPFailure(damages):
-    return len(damages[jnp.where(damages > 1)]) / len(damages)
+    exceeding = damages[jnp.where(damages>1)]
+    print(f"SHAPES -> E: {exceeding.shape} D: {damages.shape}")
+    print(f"EXCEEDING => {len(exceeding)}")
+    print(f"TOTAL => {len(damages)}")
+
+    return exceeding.shape[0] / damages.shape[0]
 
 
 def getVarCoeff(p_failures, N_mcs):
