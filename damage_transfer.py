@@ -36,7 +36,7 @@ n_batches = 5
 
 
 def getPFailure(damages):
-    return len(damages[damages > 1]) / len(damages)
+    return len(damages[jnp.where(damages > 1)]) / len(damages)
 
 
 def getVarCoeff(p_failures, N_mcs):
@@ -226,8 +226,9 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     p_failures_total = []
     v_coeffs_total = []
     p_failure_path = RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png"
+    p_failure_arr = RESULTS_FOLDER / "PFAILURES.npz"
 
-    if not os.path.exists(p_failure_path):
+    if not os.path.exists(p_failure_arr):
         for year_batch in window(range(year_init, year_end), 4):
             year_init, year_end = year_batch[0], year_batch[-1]
 
@@ -256,7 +257,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
             p_failures_total.extend(p_failures)
             # v_coeffs_total.extend(v_coeffs)
-        np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
+        np.save(p_failure_arr, np.array(p_failures_total))
     else:
         p_failures_total = np.load(p_failure_path)["p_failure"]
 
@@ -265,13 +266,13 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(x,p_failures_total)
-    tax.scatter(x,p_failures_total)
+    tax.scatter(x,p_failures_total, m="x", s=2)
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
     # bax.plot(v_coeffs_total)
     # bax.set_xlabel("Year")
     # bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
-    plt.savefig(p_failure_path, dpi=600)
+    plt.savefig(RESULTS_FOLDER / "PFAILURES.png", dpi=600)
     plt.close()
 
     # results_total = {"p_failures": np.array(p_failures_total) }
