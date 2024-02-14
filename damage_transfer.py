@@ -225,34 +225,39 @@ def post_process(ppc, n, plot):
 def main(year_init=0, year_end=N_YEARS, plot=False):
     p_failures_total = []
     v_coeffs_total = []
-    for year_batch in window(range(year_init, year_end), 4):
-        year_init, year_end = year_batch[0], year_batch[-1]
+    p_failure_path = RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png"
 
-        print(f"YEAR_BATCH => {year_batch}")
+    if not os.path.exists(p_failure_path):
+        for year_batch in window(range(year_init, year_end), 4):
+            year_init, year_end = year_batch[0], year_batch[-1]
 
-        damage_model = build_damage_model(year_init, year_end)
-        trace = sample_model(
-            damage_model, year_init=year_init, year_end=year_end, draws=1000
-        )
-        print("SAMPLING POSTERIOR ==> ")
-        ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
+            print(f"YEAR_BATCH => {year_batch}")
 
-        # fig, ax = plt.subplots(len(partial_names))
-        # fig.set_size_inches(3.1, 6.3)
-        # plt.subplots_adjust(wspace=0.05175)
+            damage_model = build_damage_model(year_init, year_end)
+            trace = sample_model(
+                damage_model, year_init=year_init, year_end=year_end, draws=1000
+            )
+            print("SAMPLING POSTERIOR ==> ")
+            ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
 
-        # with Pool(len(partial_names)) as pool:
-        print("POST PROCESSING DATA ==> ")
-        args = [(ppc, n, plot) for n in partial_names]
-        # results = pool.starmap(post_process, args)
-        results = list(map(lambda a: post_process(*a), args))
+            # fig, ax = plt.subplots(len(partial_names))
+            # fig.set_size_inches(3.1, 6.3)
+            # plt.subplots_adjust(wspace=0.05175)
+
+            # with Pool(len(partial_names)) as pool:
+            print("POST PROCESSING DATA ==> ")
+            args = [(ppc, n, plot) for n in partial_names]
+            # results = pool.starmap(post_process, args)
+            results = list(map(lambda a: post_process(*a), args))
 
 
-        p_failures = [r["p_failure"] for r in results]
-        # v_coeffs = [r["v_coeff"] for r in results]
+            p_failures = [r["p_failure"] for r in results]
+            # v_coeffs = [r["v_coeff"] for r in results]
 
-        p_failures_total.extend(p_failures)
-        # v_coeffs_total.extend(v_coeffs)
+            p_failures_total.extend(p_failures)
+            # v_coeffs_total.extend(v_coeffs)
+    else:
+        p_failures_total = np.load(p_failure_path)["p_failure"]
 
 
     x = np.arange(1980, 1980+year_end)
@@ -260,12 +265,13 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(x,p_failures_total)
+    tax.scatter(x,p_failures_total, marker="\triangle")
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
     # bax.plot(v_coeffs_total)
     # bax.set_xlabel("Year")
     # bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
-    plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
+    plt.savefig(p_failure_path, dpi=600)
     plt.close()
 
     # results_total = {"p_failures": np.array(p_failures_total) }
