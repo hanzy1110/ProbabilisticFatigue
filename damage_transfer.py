@@ -36,7 +36,7 @@ n_batches = 5
 
 
 def getPFailure(damages):
-    exceeding = damages[jnp.where(damages>1)]
+    exceeding = damages[np.where(damages>1)]
     print(f"SHAPES -> E: {exceeding.shape} D: {damages.shape}")
     print(f"EXCEEDING => {len(exceeding)}")
     print(f"TOTAL => {len(damages)}")
@@ -136,7 +136,7 @@ def build_damage_model(year_init, year_end):
         for j, i in enumerate(year_range):
             alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
             beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
-            damages = pm.Gamma(
+            damages = pm.Beta(
                 f"damage_{i}",
                 alpha=alpha,
                 beta=beta,
