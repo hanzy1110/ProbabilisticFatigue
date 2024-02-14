@@ -66,7 +66,7 @@ def from_posterior(param, samples):
     # what was never sampled should have a small probability but not 0,
     # so we'll extend the domain and use linear approximation of density on it
     # x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
-    x = np.concatenate([[x[0] - 3 * width], x, [x[-1] + 3 * width]])
+    x = np.concatenate([[x[0] - 4 * width], x, [x[-1] + 4 * width]])
     y = np.concatenate([[0], y, [0]])
     return Interpolated(param, x, y)
 
@@ -249,15 +249,17 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
 
         p_failures = [r["p_failure"] for r in results]
-        v_coeffs = [r["v_coeff"] for r in results]
+        # v_coeffs = [r["v_coeff"] for r in results]
 
         p_failures_total.extend(p_failures)
-        v_coeffs_total.extend(v_coeffs)
+        # v_coeffs_total.extend(v_coeffs)
 
 
-    fig, (tax, bax) = plt.subplots(2, 1)
+    x = np.arange(1980, 1980+year_end)
+
+    fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
-    tax.plot(p_failures_total)
+    tax.plot(x,p_failures_total)
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
     # bax.plot(v_coeffs_total)
@@ -266,9 +268,10 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     plt.savefig(RESULTS_FOLDER / "P_FAILURE_PLOT_ACCUMULATED.png", dpi=600)
     plt.close()
 
-    results_total = {"p_failures": p_failures_total, "v_coeffs":v_coeffs_total}
-    with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
-        json.dump(results_total, f)
+    # results_total = {"p_failures": np.array(p_failures_total) }
+    np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
+    # with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
+    #     json.dump(results_total, f)
 
 
 if __name__ == "__main__":
