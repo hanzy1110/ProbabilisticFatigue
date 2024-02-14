@@ -256,16 +256,16 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
             p_failures_total.extend(p_failures)
             # v_coeffs_total.extend(v_coeffs)
+        np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
     else:
         p_failures_total = np.load(p_failure_path)["p_failure"]
 
 
-    np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
     x = np.arange(1980, 1980+year_end-1)
     fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(x,p_failures_total)
-    tax.scatter(x,p_failures_total, marker="\triangle")
+    tax.scatter(x,p_failures_total)
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
     # bax.plot(v_coeffs_total)
