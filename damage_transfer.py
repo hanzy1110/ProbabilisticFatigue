@@ -260,8 +260,8 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         p_failures_total = np.load(p_failure_path)["p_failure"]
 
 
-    x = np.arange(1980, 1980+year_end)
-
+    np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
+    x = np.arange(1980, 1980+year_end-1)
     fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(x,p_failures_total)
@@ -275,7 +275,6 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     plt.close()
 
     # results_total = {"p_failures": np.array(p_failures_total) }
-    np.save(RESULTS_FOLDER / "PFAILURES.npz", np.array(p_failures_total))
     # with open(RESULTS_FOLDER / "PFAILURES.json", "w") as f:
     #     json.dump(results_total, f)
 
