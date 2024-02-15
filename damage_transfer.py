@@ -288,6 +288,8 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
                          alpha=0.4)
         bax.set_xlabel("Year")
         bax.set_ylabel(r"$D$")
+        tax.legend()
+        bax.legend()
         plt.savefig(RESULTS_FOLDER / "PFAILURES_MEAN.png", dpi=600)
         plt.close()
 
