@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial.distance import pdist
 
-az.style.use("arviz-darkgrid")
+# az.style.use("arviz-darkgrid")
 SEED = 2022
 rng = np.random.default_rng(SEED)
 

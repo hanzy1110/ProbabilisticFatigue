@@ -271,7 +271,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     fig, tax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(x,p_failures_total)
-    tax.scatter(x,p_failures_total, m="x", s=2)
+    tax.scatter(x,p_failures_total, marker="x", size=2)
     tax.set_xlabel("Year")
     tax.set_ylabel(r"$\mathrm{P}_{failure}$")
     # bax.plot(v_coeffs_total)
