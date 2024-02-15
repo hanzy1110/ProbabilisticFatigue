@@ -20,7 +20,7 @@ from matplotlib.ticker import PercentFormatter
 from typing import Dict, Any, List
 
 from .plotUtils import plot_mean, plot_total, plot_var
-from .damageModelGao import gaoModel_debug, gaoModel, minerRule
+from .damageModelGao import gaoModel_debug, gaoModel, miner_model
 from .aeran_model import aeran_model
 from .freqModel import LoadModel, hist_sample
 from .models import WohlerCurve
@@ -276,84 +276,62 @@ class DamageCalculation:
             # print(f"res shape : {tot_damages.shape}")
 
             with open(
-                self.loadPath / f"tot_damages_year{year}_batch_{i}.npz", "wb"
+                self.loadPath / f"tot_damages_year{year}_batch_{i}_Aeran.npz", "wb"
             ) as file:
                 np.savez_compressed(file, tot_damages)
         # delete_live_arrays()
         return i
 
-    def calculate_damage_miner(self, cycles_per_year, _iter, plot=False):
+    def calculate_damage_miner(self, cycles_per_year, year):
         print("=/" * 30)
         print("Damage According to Miner")
-
-        # cycles = jnp.array(self.cycles)
-
-        cycles = jnp.array(self.cycles, dtype=jnp.float16) * cycles_per_year
-        Nf = jnp.array(self.Nsamples, dtype=jnp.float16)[:-1, :]
-        # Nf = jnp.array(self.Nsamples)[..., :-2]
-
-        n_cycles = cycles.sum(axis=1)
-        print(f"Total Cycles: {n_cycles.mean()}")
-
-        damageFun = jax.vmap(minerRule, in_axes=(None, 1))
-        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
-
-        init = perf_counter()
-        self.damages = coolDamageFun(cycles).flatten()
-        end = perf_counter()
-
-        print(f"Time passed: {end-init}")
-
-        nanFrac = len(self.damages[jnp.isnan(self.damages)]) / len(self.damages)
-        print(f"NaN Damage Fraction: {nanFrac}")
-
-        if nanFrac < 0.5:
-            if plot:
-                fig, ax = plt.subplots(2, 1, figsize=(12, 8))
-                ax[0].plot(self.damages)
-                ax[0].set_title("Damage according to Miners rule")
-                try:
-                    counts, bins = jnp.histogram(
-                        self.damages[jnp.where(~jnp.isnan(self.damages))],
-                        bins=50,
-                        density=True,
-                    )
-                    ax[1].hist(bins[:-1], bins, weights=counts)
-                except Exception as e:
-                    print(e)
-
-                plt.savefig(self.wohler_path / "damageHistMiner.jpg", dpi=600)
-                plt.close(fig)
-            return self.damages
-
-        return None
-
-    def calculate_damage_debug(
-        self,
-        cycles_per_year,
-    ):
-        # cycles = jnp.array(self.cycles)
-        print("=/" * 30)
-        print("Damage According to Aeran")
         # cycles = jnp.array(self.cycles, dtype=jnp.float16)[:10, :]
-        cycles = jnp.array(self.cycles, dtype=jnp.float32) * cycles_per_year
-        n_cycles = cycles.sum(axis=1)
-        print(f"Total Cycles: {n_cycles.mean()}")
+        # CLEARLY NEEDS WORK!!!
+
+        MAX_CYCLES_SAMPLES = 101
+        cycles = jnp.array(self.cycles, dtype=jnp.float32)
+
+        vSample = jax.vmap(
+            jax.jit(lambda x: get_densities(x, cycles_per_year), static_argnums=(1,))
+        )
+
         Nf = jnp.array(self.Nsamples, dtype=jnp.float32)
-        lnNf = jnp.array(self.slicedTotal.T, dtype=jnp.float32)
-        sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
-        shape = (Nf.shape[0],)
+
+        if Nf.shape[1] < self.amplitudes.shape[1]:
+            sigma_i = jnp.array(self.amplitudes.T[:, : Nf.shape[1]], dtype=jnp.float32)
+        else:
+            sigma_i = jnp.array(self.amplitudes.T, dtype=jnp.float32)
+            Nf = Nf[:, : sigma_i.shape[1]]
+
         print(f"cycles shape: {cycles.shape} ")
         print(f"Nf shape: {Nf.shape} ")
-        print(f"lnNF shape: {lnNf.shape} ")
         print(f"sigma_i shape: {sigma_i.shape} ")
 
-        dmgs = []
-        for i, c in enumerate(cycles):
-            Ni, sigma_i = get_random_params(Nf, sigma_i, idx=i, size=10)
-            dmgs.append(aeran_model(c, Ni, sigma_i, shape=c.shape))
+        damageFun = jax.vmap(miner_model, in_axes=(None, 1))
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
 
-        return np.hstack(dmgs)
+        tot_damages = None
+
+        BATCH_SIZE = 50
+        MAX_BATCHES = 1500
+        i = 0
+        for i, batch in tqdm(
+            enumerate(
+                get_batch(cycles, BATCH_SIZE, batch_dim=0, max_batches=MAX_BATCHES)
+            ),
+            total=cycles.shape[0] // BATCH_SIZE,
+            leave=True,
+        ):
+            cycles = vSample(batch)
+            tot_damages = np.array(coolDamageFun(cycles).flatten())
+            # print(f"res shape : {tot_damages.shape}")
+
+            with open(
+                self.loadPath / f"tot_damages_year{year}_batch_{i}_miner.npz", "wb"
+            ) as file:
+                np.savez_compressed(file, tot_damages)
+        # delete_live_arrays()
+        return i
 
     def loadLifeSamples(self):
         with open(

@@ -178,12 +178,19 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
         print(10*"==X==")
         print(f"YEAR {year} // CYCLES {ncycles}")
 
-        if not os.path.exists(LOAD_PATH / f"tot_damages_year{year}_batch_0.npz"):
+        if not os.path.exists(LOAD_PATH / f"tot_damages_year{year}_batch_0_Aeran.npz"):
             nbatches = damageCal.calculate_damage(
                 cycles_per_year=ncycles, year=year, nloads=N_DISTINCT_LOADS
             )
         else:
             nbatches = 100
+
+        if not os.path.exists(LOAD_PATH / f"tot_damages_year{year}_batch_0_miner.npz"):
+            nbatches = damageCal.calculate_damage_miner(
+                cycles_per_year=ncycles, year=year)
+        else:
+            nbatches = 100
+
 
         tot_damages = None
         for i in range(nbatches):
@@ -191,7 +198,7 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
 
             try:
                 with open(
-                    LOAD_PATH / f"tot_damages_year{year}_batch_{i}.npz", "rb"
+                    LOAD_PATH / f"tot_damages_year{year}_batch_{i}_Aeran.npz", "rb"
                 ) as file:
                     samples = np.load(file, allow_pickle=True)
                     # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}

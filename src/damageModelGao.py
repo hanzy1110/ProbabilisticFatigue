@@ -52,7 +52,7 @@ def gaoModel_debug(n_i:Array, N_i:Array, lnN_i)->Array:
     print('outer nNi', nNi)
     return np.asarray(-1/(lnN_i[-1]) * np.log(inner_debug(totalN-1, n_i, N_i, lnN_i)-nNi))
 
-def minerRule(n_i:Array, N_i:Array,)->Array:
+def miner_model(n_i:Array, N_i:Array,)->Array:
     # n_iS = n_i[n_i<N_i]
     # N_iS = N_i[n_i<N_i]
     return jnp.true_divide(n_i, N_i).sum()
