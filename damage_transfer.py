@@ -137,10 +137,10 @@ def build_damage_model(year_init, year_end):
         for j, i in enumerate(year_range):
             alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
             beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
-            damages = pm.Gamma(
+            damages = pm.Normal(
                 f"damage_{i}",
-                alpha=alpha,
-                beta=beta,
+                mu=alpha,
+                sigma=beta,
                 observed=tot_damages[j, :],
             )
 
