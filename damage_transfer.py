@@ -77,11 +77,11 @@ def from_posterior(param, samples):
     return Interpolated(param, x, y)
 
 
-def get_prev_damage(year_init, year_end):
+def get_prev_damage(year_init, year_end, dmg_model):
     prev_year_end = year_init + 1
     prev_year_init = prev_year_end - (year_end - year_init)
     ppc_filename = (
-        RESULTS_FOLDER / f"damage_posterior_{prev_year_init}_{prev_year_end}.nc"
+        RESULTS_FOLDER / f"damage_posterior_{prev_year_init}_{prev_year_end}_{dmg_model}.nc"
     )
 
     print(f"PPC FILENAME ==> {ppc_filename}")
@@ -180,7 +180,7 @@ def posterior_sample(damage_model, trace, year_init, year_end, dmg_model="Aeran"
             for i, n in enumerate(names[1:]):
                 if i == 0:
                     if year_init != 0:
-                        damage_prev = get_prev_damage(year_init, year_end)
+                        damage_prev = get_prev_damage(year_init, year_end, dmg_model)
                     else:
                         damage_prev = damage_model.named_vars[names[0]]
                 else:
