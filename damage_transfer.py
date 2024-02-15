@@ -40,6 +40,7 @@ def getPFailure(damages):
     print(f"SHAPES -> E: {exceeding.shape} D: {damages.shape}")
     print(f"EXCEEDING => {len(exceeding)}")
     print(f"TOTAL => {len(damages)}")
+    print(f"damages => {damages[:500]}")
 
     return exceeding.shape[0] / damages.shape[0]
 
