@@ -308,7 +308,7 @@ class DamageCalculation:
         print(f"sigma_i shape: {sigma_i.shape} ")
 
         damageFun = jax.vmap(miner_model, in_axes=(None, 1))
-        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf), in_axes=(0,))
+        coolDamageFun = jax.vmap(lambda x: damageFun(x, Nf[:-1,:]), in_axes=(0,))
 
         tot_damages = None
 
