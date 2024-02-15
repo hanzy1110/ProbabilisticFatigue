@@ -285,7 +285,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         bax.fill_between(x,
                          np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
                          np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
-                         label=f"{aux[dmg_model]}", alpha=0.4)
+                         alpha=0.4)
         bax.set_xlabel("Year")
         bax.set_ylabel(r"$D$")
         plt.savefig(RESULTS_FOLDER / "PFAILURES_MEAN.png", dpi=600)
