@@ -224,7 +224,12 @@ def post_process(ppc, n, plot, dmg_model="Aeran"):
             fill_kwargs={"alpha": 0.4, "color": "palegreen"},
         )
 
-        ax.hist(ppc.observed_data, label=f"Daño Observado {n}")
+        try:
+            observed_data = ppc.observed_data[n]
+            ax.hist(observed_data, label=f"Daño Observado {n}")
+        except Exception as e:
+            print(e)
+
         ax.set_xlabel(n)
         ax.set_xlim(0, None)
 
