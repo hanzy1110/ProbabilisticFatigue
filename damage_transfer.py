@@ -163,7 +163,7 @@ def sample_model(damage_model, draws, year_init, year_end, dmg_model="Aeran"):
     else:
         print("LOADING TRACE")
         trace = az.from_netcdf(filename)
-        print(az.summary(trace))
+    print(az.summary(trace))
 
     return trace
 
