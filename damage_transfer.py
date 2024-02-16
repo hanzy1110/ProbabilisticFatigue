@@ -9,6 +9,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 import collections, itertools
 import scienceplots
+from time import perf_counter
 
 import jax.numpy as jnp
 
@@ -34,6 +35,8 @@ n_min = 1
 n_max = 100
 n_batches = 5
 
+def print_perf(op, s,e):
+    print(f"TIME SPENT ON {op}, {e-s} ")
 
 def getPFailure(damages):
     exceeding = damages[np.where(damages>1)]
@@ -246,18 +249,24 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
             print(f"YEAR_BATCH => {year_batch}")
 
             for dmg_model in ["miner", "Aeran"]:
+                strt = perf_counter()
                 damage_model = build_damage_model(year_init, year_end)
                 trace = sample_model(
                     damage_model, year_init=year_init, year_end=year_end, draws=1000
                 )
+                end = perf_counter()
+                print_perf("SAMPLING", strt, end)
+
+                strt = perf_counter()
                 print("SAMPLING POSTERIOR ==> ")
                 ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
+                end = perf_counter()
+                print_perf("PPC", strt, end)
 
                 # fig, ax = plt.subplots(len(partial_names))
                 # fig.set_size_inches(3.1, 6.3)
                 # plt.subplots_adjust(wspace=0.05175)
-
-                print("POST PROCESSING DATA ==> ")
+                strt = perf_counter()
                 args = [(ppc, n, plot, dmg_model) for n in partial_names]
                 results = list(map(lambda a: post_process(*a), args))
                 p_failures = [r["p_failure"] for r in results]
@@ -266,6 +275,9 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
                 p_failures_total[dmg_model].extend(p_failures)
                 d_means_total[dmg_model].extend(d_means)
                 d_stds_total[dmg_model].extend(d_stds)
+                end = perf_counter()
+                print_perf("POST_PROCESS", strt, end)
+
 
         # monkey patch it
         p_failures_total = {k:np.array(v) for k,v in p_failures_total.items()}
@@ -289,9 +301,9 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         tax.set_ylabel(r"$\mathrm{P}_{falla}$")
         bax.plot(x, d_means_total[dmg_model], label=f"{aux[dmg_model]}")
         bax.fill_between(x,
-                         np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
-                         np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
-                         alpha=0.4, color=colors[dmg_model])
+                         np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model][0]),
+                         np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model][0]),
+                         alpha=0.4, color=colors[dmg_model], label=fr"Region $1\sigma$")
         bax.set_xlabel("Año")
         bax.set_ylabel(r"$D$")
 
