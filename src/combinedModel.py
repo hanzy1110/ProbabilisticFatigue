@@ -443,9 +443,9 @@ class DamageCalculation:
         ax[0].set_ylabel("Cycles to failure")
         ax[0].set_xlabel("Amplitudes")
 
-        ax[1].set_ylabel("Mean")
-        ax[2].set_ylabel("Variance")
-        ax[3].set_ylabel("Variance (notTransformed)")
+        ax[1].set_ylabel("Media")
+        ax[2].set_ylabel("Variancia")
+        ax[3].set_ylabel("Variancia (notTransformed)")
 
         ax[1].set_xlabel("Amplitudes")
         ax[2].set_xlabel("Amplitudes")
@@ -458,8 +458,8 @@ class DamageCalculation:
         counts, bins = jnp.histogram(loads)
         bins *= self.LoadM.maxAmp / self.WohlerC.NMax
         ax.hist(bins[:-1], bins, weights=counts)
-        ax.set_xlabel("Loads [Sampled]")
-        ax.set_ylabel("Density")
+        ax.set_xlabel("Cargas [Sampleadas]")
+        ax.set_ylabel("Frecuencia")
 
         plt.savefig(self.wohler_path / "loadSamples.jpg", dpi=600)
         plt.close()

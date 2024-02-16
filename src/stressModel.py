@@ -109,7 +109,7 @@ class PFSlopeModel:
         sns.kdeplot(self.postSamples["pfSlope"], ax=ax)
         plt.hist(self.ydata, density=True, label="Experimental Data")
         ax.legend()
-        ax.set_xlabel(r"\text{Poffemberger \& Swart Slope}")
+        ax.set_xlabel(r"\text{Pendiente de Poffemberger \& Swart}")
         plt.savefig(self.results_folder / "PF_KDEPLOT.jpg")
 
         print(summ)

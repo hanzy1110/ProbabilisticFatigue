@@ -166,7 +166,7 @@ class LoadModel:
         fig.set_size_inches(3.3, 3.3)
         ax.hist(self.amplitudes_sample)
         ax.set_xlabel("Amplitudes")
-        ax.set_ylabel("Density")
+        ax.set_ylabel("Frecuencia")
         plt.savefig(self.results_folder / "LOAD_EXP_DATA.png", dpi=600)
         plt.close()
         self.maxAmp = self.amplitudes_sample.max()
@@ -223,7 +223,7 @@ class LoadModel:
         fig, ax = plt.subplots(1, 1, sharex=False, figsize=(12, 5))
         fig.set_size_inches(3.3, 3.3)
         ax.hist(self.amplitudes_sample, density=True)
-        sns.kdeplot(samples["likelihood"].flatten(), ax=ax, label="Inference")
+        sns.kdeplot(samples["likelihood"].flatten(), ax=ax, label="Inferencia")
 
         plt.legend()
         plt.savefig(self.results_folder / "posterior.jpg", dpi=600)

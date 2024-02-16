@@ -204,10 +204,10 @@ def post_process(ppc, n, plot, dmg_model="Aeran"):
     d_mean = d.mean(dim=("chain", "draw"))
     N_mcs = len(d_mean)
     p_failures = getPFailure(d_mean.values)
-    v_coeffs = getVarCoeff(d_mean.values, N_mcs)
+    # v_coeffs = getVarCoeff(d_mean.values, N_mcs)
 
     print(f"P_FAILURE ==> {p_failures}")
-    print(f"V_COEFF ==> {v_coeffs}")
+    # print(f"V_COEFF ==> {v_coeffs}")
 
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 3.3)
@@ -219,13 +219,15 @@ def post_process(ppc, n, plot, dmg_model="Aeran"):
             plot_kwargs={"color": "firebrick", "label": n},
             fill_kwargs={"alpha": 0.4, "color": "palegreen"},
         )
+
+        ax.hist(ppc.observed_data, label=f"Daño Observado {n}")
         ax.set_xlabel(n)
         ax.set_xlim(0, None)
 
         plt.savefig(RESULTS_FOLDER / f"partial_damage_{n}_{dmg_model}.png", dpi=600)
         plt.close()
 
-    return {"p_failure": p_failures, "v_coeff": v_coeffs,
+    return {"p_failure": p_failures,
             "d_mean":d.values.mean(), "d_std": d.values.std()}
 
 
@@ -283,17 +285,21 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
         tax.plot(x,p_failures_total[dmg_model], label=f"{aux[dmg_model]}")
         tax.scatter(x, p_failures_total[dmg_model])
-        tax.set_xlabel("Year")
-        tax.set_ylabel(r"$\mathrm{P}_{failure}$")
+        tax.set_xlabel("Año")
+        tax.set_ylabel(r"$\mathrm{P}_{falla}$")
         bax.plot(x, d_means_total[dmg_model], label=f"{aux[dmg_model]}")
         bax.fill_between(x,
                          np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
                          np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
                          alpha=0.4, color=colors[dmg_model])
-        bax.set_xlabel("Year")
+        bax.set_xlabel("Año")
         bax.set_ylabel(r"$D$")
+
+        bax.hlines(y=1, xmin=x[0], xmax=x[-1],  linestyle="dashed")
+        bax.set_ylim(0, 1.3)
+
         tax.legend()
-        tax.legend()
+        bax.legend()
     plt.savefig(RESULTS_FOLDER / "PFAILURES_MEAN.png", dpi=600)
     plt.close()
 

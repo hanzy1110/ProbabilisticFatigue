@@ -34,7 +34,7 @@ N_DISTINCT_LOADS = 32
 
 RANDOM_SEED = 3312
 rng = np.random.default_rng(RANDOM_SEED)
-az.style.use("arviz-darkgrid")
+# az.style.use("arviz-darkgrid")
 
 printer = pprint.PrettyPrinter(5, compact=True)
 
@@ -57,11 +57,11 @@ def plot_p_failure(values: Dict[int, Dict[str, np.float32]]):
     fig, (tax, bax) = plt.subplots(2, 1)
     fig.set_size_inches(3.3, 6.3)
     tax.plot(p_failures)
-    tax.set_xlabel("Year")
-    tax.set_ylabel(r"$\mathrm{P}_{failure}$")
+    tax.set_xlabel("Año")
+    tax.set_ylabel(r"$\mathrm{P}_{falla}$")
     bax.plot(var_coeffs)
-    bax.set_xlabel("Year")
-    bax.set_ylabel(r"$\delta_{\mathrm{P}_{failure}}$")
+    bax.set_xlabel("Año")
+    bax.set_ylabel(r"$\delta_{\mathrm{P}_{falla}}$")
     plt.savefig(RESULTS_FOLDER / "p_failure_plot.png", dpi=600)
     plt.close()
 
@@ -150,8 +150,8 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
     fig, ax = plt.subplots(1, 1)
     fig.set_size_inches(3.3, 3.3)
     ax.plot(cycles_per_year)
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Cycles / Year")
+    ax.set_xlabel("Año")
+    ax.set_ylabel("Ciclos / Año")
     ax.set_yscale("log")
     plt.savefig(RESULTS_FOLDER / "cycles_plot.png", dpi=600)
     plt.close()

@@ -28,8 +28,8 @@ K = 30
 fig, ax = plt.subplots(1, 1)
 
 ax.hist(freqs, density=True)
-ax.set_xlabel("Frequency")
-ax.set_ylabel("Density")
+ax.set_xlabel("Frecuencia")
+ax.set_ylabel("Densidad")
 plt.savefig(BASE_PATH / "RESULTS/freq_distro.png", dpi=600)
 
 if False:
