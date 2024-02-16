@@ -265,7 +265,10 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
                 d_means_total[dmg_model].extend(d_means)
                 d_stds_total[dmg_model].extend(d_stds)
 
-        np.savez_compressed(p_failure_arr, np.array(p_failures_total))
+        # monkey patch it
+        p_failures_total = {k:np.array(v) for k,v in p_failures_total.items()}
+
+        np.savez_compressed(p_failure_arr, p_failures_total)
     else:
         p_failures_total = np.load(p_failure_arr)
 
