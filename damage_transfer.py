@@ -140,10 +140,10 @@ def build_damage_model(year_init, year_end, dmg_model="Aeran"):
         for j, i in enumerate(year_range):
             alpha = pm.Gamma(f"alpha_{i}", alpha=1, beta=1)
             beta = pm.Gamma(f"beta_{i}", alpha=1, beta=1)
-            damages = pm.Normal(
+            damages = pm.Gamma(
                 f"damage_{i}",
-                mu=alpha,
-                sigma=beta,
+                alpha=alpha,
+                beta=beta,
                 observed=tot_damages[j, :],
             )
 
