@@ -267,7 +267,7 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
         np.savez_compressed(p_failure_arr, np.array(p_failures_total))
     else:
-        p_failures_total = np.load(p_failure_path)["p_failure"]
+        p_failures_total = np.load(p_failure_arr)
 
 
     x = np.arange(1980, 1980+len(p_failures_total["miner"]))
