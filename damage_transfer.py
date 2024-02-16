@@ -267,28 +267,29 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
         # monkey patch it
         p_failures_total = {k:np.array(v) for k,v in p_failures_total.items()}
-
         np.savez_compressed(p_failure_arr, p_failures_total)
     else:
         p_failures_total = np.load(p_failure_arr)
 
 
     x = np.arange(1980, 1980+len(p_failures_total["miner"]))
-    fig, (tax, bax) = plt.subplots(2, 1)
+    fig, (tax, bax) = plt.subplots(2, 1, sharex=True)
     fig.set_size_inches(3.3, 6.3)
     # Just lazy
     aux = {"miner":"Miner", "Aeran":"Aeran"}
+    colors = {"miner":"salmon", "Aeran":"lightgreen"}
+
     for dmg_model in ["miner", "Aeran"]:
 
         tax.plot(x,p_failures_total[dmg_model], label=f"{aux[dmg_model]}")
-        tax.scatter(x, p_failures_total[dmg_model], marker="x")
+        tax.scatter(x, p_failures_total[dmg_model])
         tax.set_xlabel("Year")
         tax.set_ylabel(r"$\mathrm{P}_{failure}$")
         bax.plot(x, d_means_total[dmg_model], label=f"{aux[dmg_model]}")
         bax.fill_between(x,
                          np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
                          np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
-                         alpha=0.4)
+                         alpha=0.4, color=colors[dmg_model])
         bax.set_xlabel("Year")
         bax.set_ylabel(r"$D$")
         tax.legend()
