@@ -305,8 +305,8 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
         tax.set_ylabel(r"$\mathrm{P}_{falla}$")
         bax.plot(x, d_means_total[dmg_model], label=f"{aux[dmg_model]}")
         bax.fill_between(x,
-                         np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model][0]),
-                         np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model][0]),
+                         np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
+                         np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
                          alpha=0.4, color=colors[dmg_model], label=fr"Region $1\sigma$")
         bax.set_xlabel("Año")
         bax.set_ylabel(r"$D$")
