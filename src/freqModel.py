@@ -102,14 +102,14 @@ def calculate_freq_dist(freq_data: pathlib.Path, plot=False):
 
 
 def total_cycles_per_year(
-    cycling_hours, n_years, freq_data, ndraws=1, ls=1.1, tau=10.0
+    cycling_hours, n_years, freq_data, ndraws=1, ls=1.1, tau=1e-2
 ):
     freq = calculate_freq_dist(freq_data)
     print(f"frequency => {freq}")
     n_mean = cycling_hours * freq.mean() * 3600
     # return n_mean * np.ones_like(np.arange(n_years))
     # Use the follwing when modelling random amounts:
-    cov = (n_mean / tau) * pm.gp.cov.Matern52(1, ls)
+    cov = (n_mean / tau)**2 * pm.gp.cov.Matern52(1, ls)
     X = np.linspace(0, n_years, n_years)[:, None]
     K = cov(X).eval()
     mu = n_mean * np.ones(len(K))
