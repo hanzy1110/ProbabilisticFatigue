@@ -121,13 +121,10 @@ def get_tot_damages(year, dmg_model) -> np.ndarray:
             # print(e)
 
     if tot_damages is not None:
-        # print("NAN FRAC ==>")
-        # print(f"NAN LEN {len(tot_damages[np.isnan(tot_damages)])}")
-        # print(len(tot_damages[np.isnan(tot_damages)]) / len(tot_damages))
-        # print(f"TOTAL LEN {len(tot_damages)}")
-        return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
+        # return tot_damages[~np.isnan(tot_damages)][:MAX_SAMPLES]
+        return np.random.choice(tot_damages[~np.isnan(tot_damages)], size=(MAX_SAMPLES))
 
-    return tot_damages
+    # return tot_damages
 
 
 def build_damage_model(year_init, year_end, dmg_model="Aeran"):
