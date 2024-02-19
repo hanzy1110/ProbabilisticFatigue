@@ -22,7 +22,7 @@ plt.style.use(["science", "ieee"])
 
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_DIR = BASE_PATH / "data"
-RESULTS_FOLDER = BASE_PATH / "RESULTS"
+RESULTS_FOLDER = BASE_PATH / "RESULTS_2"
 PLOT_DIR = BASE_PATH / "plots"
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 MAX_SAMPLES = 15000
