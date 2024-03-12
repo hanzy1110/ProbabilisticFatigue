@@ -35,11 +35,13 @@ n_min = 1
 n_max = 100
 n_batches = 5
 
-def print_perf(op, s,e):
+
+def print_perf(op, s, e):
     print(f"TIME SPENT ON {op}, {e-s} ")
 
+
 def getPFailure(damages):
-    exceeding = damages[np.where(damages>1)]
+    exceeding = damages[np.where(damages > 1)]
     print(f"SHAPES -> E: {exceeding.shape} D: {damages.shape}")
     print(f"EXCEEDING => {len(exceeding)}")
     print(f"TOTAL => {len(damages)}")
@@ -84,7 +86,8 @@ def get_prev_damage(year_init, year_end, dmg_model):
     prev_year_end = year_init + 1
     prev_year_init = prev_year_end - (year_end - year_init)
     ppc_filename = (
-        RESULTS_FOLDER / f"damage_posterior_{prev_year_init}_{prev_year_end}_{dmg_model}.nc"
+        RESULTS_FOLDER
+        / f"damage_posterior_{prev_year_init}_{prev_year_end}_{dmg_model}.nc"
     )
 
     print(f"PPC FILENAME ==> {ppc_filename}")
@@ -148,7 +151,9 @@ def build_damage_model(year_init, year_end, dmg_model="Aeran"):
 
 
 def sample_model(damage_model, draws, year_init, year_end, dmg_model="Aeran"):
-    filename = RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE_{year_init}_{year_end}_{dmg_model}.nc"
+    filename = (
+        RESULTS_FOLDER / f"DAMAGE_MODEL_TRACE_{year_init}_{year_end}_{dmg_model}.nc"
+    )
 
     if not os.path.exists(filename):
         compiled_model = nutpie.compile_pymc_model(damage_model)
@@ -174,7 +179,9 @@ def posterior_sample(damage_model, trace, year_init, year_end, dmg_model="Aeran"
     print(names)
     print(partial_names)
 
-    ppc_filename = RESULTS_FOLDER / f"damage_posterior_{year_init}_{year_end}_{dmg_model}.nc"
+    ppc_filename = (
+        RESULTS_FOLDER / f"damage_posterior_{year_init}_{year_end}_{dmg_model}.nc"
+    )
 
     if not os.path.exists(ppc_filename):
         with damage_model:
@@ -233,8 +240,7 @@ def post_process(ppc, n, plot, dmg_model="Aeran"):
         plt.savefig(RESULTS_FOLDER / f"partial_damage_{n}_{dmg_model}.png", dpi=600)
         plt.close()
 
-    return {"p_failure": p_failures,
-            "d_mean":d.values.mean(), "d_std": d.values.std()}
+    return {"p_failure": p_failures, "d_mean": d.values.mean(), "d_std": d.values.std()}
 
 
 def main(year_init=0, year_end=N_YEARS, plot=False):
@@ -244,8 +250,6 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
     d_means_total = {"miner": [], "Aeran": []}
     d_stds_total = {"miner": [], "Aeran": []}
 
-
-
     if not os.path.exists(p_failure_arr):
         for year_batch in window(range(year_init, year_end), 4):
             year_init, year_end = year_batch[0], year_batch[-1]
@@ -253,16 +257,18 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
 
             for dmg_model in ["miner", "Aeran"]:
                 strt = perf_counter()
-                damage_model = build_damage_model(year_init, year_end)
+                damage_model = build_damage_model(year_init, year_end, dmg_model=dmg_model)
                 trace = sample_model(
-                    damage_model, year_init=year_init, year_end=year_end, draws=1000
+                    damage_model, year_init=year_init, year_end=year_end, draws=1000, dmg_model=dmg_model
                 )
                 end = perf_counter()
                 print_perf("SAMPLING", strt, end)
 
                 strt = perf_counter()
                 print("SAMPLING POSTERIOR ==> ")
-                ppc, partial_names = posterior_sample(damage_model, trace, year_init, year_end)
+                ppc, partial_names = posterior_sample(
+                    damage_model, trace, year_init, year_end, dmg_model=dmg_model
+                )
                 end = perf_counter()
                 print_perf("PPC", strt, end)
 
@@ -281,37 +287,39 @@ def main(year_init=0, year_end=N_YEARS, plot=False):
                 end = perf_counter()
                 print_perf("POST_PROCESS", strt, end)
 
-
         # monkey patch it
-        p_failures_total = {k:np.array(v) for k,v in p_failures_total.items()}
+        p_failures_total = {k: np.array(v) for k, v in p_failures_total.items()}
         np.savez_compressed(p_failure_arr, p_failures_total)
     else:
-        p_failures_total = np.load(p_failure_arr, allow_pickle=True)['arr_0']
+        p_failures_total = np.load(p_failure_arr, allow_pickle=True)["arr_0"]
 
     print(type(p_failures_total))
 
-    x = np.arange(1980, 1980+len(p_failures_total["miner"]))
+    x = np.arange(1980, 1980 + len(p_failures_total["miner"]))
     fig, (tax, bax) = plt.subplots(2, 1, sharex=True)
     fig.set_size_inches(3.3, 6.3)
     # Just lazy
-    aux = {"miner":"Miner", "Aeran":"Aeran"}
-    colors = {"miner":"salmon", "Aeran":"lightgreen"}
+    aux = {"miner": "Miner", "Aeran": "Aeran"}
+    colors = {"miner": "salmon", "Aeran": "lightgreen"}
 
     for dmg_model in ["miner", "Aeran"]:
-
-        tax.plot(x,p_failures_total[dmg_model], label=f"{aux[dmg_model]}")
+        tax.plot(x, p_failures_total[dmg_model], label=f"{aux[dmg_model]}")
         tax.scatter(x, p_failures_total[dmg_model])
         tax.set_xlabel("Año")
         tax.set_ylabel(r"$\mathrm{P}_{falla}$")
         bax.plot(x, d_means_total[dmg_model], label=f"{aux[dmg_model]}")
-        bax.fill_between(x,
-                         np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
-                         np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
-                         alpha=0.4, color=colors[dmg_model], label=fr"Region $1\sigma$")
+        bax.fill_between(
+            x,
+            np.array(d_means_total[dmg_model]) + np.array(d_stds_total[dmg_model]),
+            np.array(d_means_total[dmg_model]) - np.array(d_stds_total[dmg_model]),
+            alpha=0.4,
+            color=colors[dmg_model],
+            label=rf"Region $1\sigma {aux[dmg_model]}$",
+        )
         bax.set_xlabel("Año")
         bax.set_ylabel(r"$D$")
 
-        bax.hlines(y=1, xmin=x[0], xmax=x[-1],  linestyle="dashed")
+        bax.hlines(y=1, xmin=x[0], xmax=x[-1], linestyle="dashed")
         bax.set_ylim(0, 1.3)
 
         tax.legend()

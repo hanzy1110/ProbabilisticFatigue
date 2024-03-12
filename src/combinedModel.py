@@ -77,11 +77,11 @@ def get_densities(densities, n):
     Returns:
         [list]: list with samples
     """
-    key, subkey = jax.random.split(KEY)
+    # key, subkey = jax.random.split(KEY)
     # ps = densities / densities.sum()
     # return jax.random.choice(subkey, vals, shape=(n,), p=ps)
-    a = jnp.array((densities / densities.sum()) * n, dtype=jnp.int32)
-    return jax.random.choice(key, a, shape=a.shape)
+    return jnp.array((densities / densities.sum()) * n, dtype=jnp.int32)
+    # return jax.random.choice(key, a, shape=a.shape)
 
 
 @jax.jit
