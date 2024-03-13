@@ -26,7 +26,8 @@ from .freqModel import LoadModel, hist_sample
 from .models import WohlerCurve
 from .stressModel import CableProps, PFSlopeModel
 
-from jax.config import config
+# from jax.config import config
+
 import matplotlib as mpl
 
 import scienceplots
