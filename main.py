@@ -24,12 +24,12 @@ from src.freqModel import total_cycles_per_year
 # )
 BASE_PATH = pathlib.Path(__file__).parent
 DATA_DIR = BASE_PATH / "data"
-RESULTS_FOLDER = BASE_PATH / "RESULTS_2"
+RESULTS_FOLDER = BASE_PATH / "RESULTS_3"
 PLOT_DIR = BASE_PATH / "plots"
 
 LOAD_PATH = RESULTS_FOLDER / "LOADS"
 CYCLING_HOURS = 500
-N_YEARS = 100
+N_YEARS = 65
 N_DISTINCT_LOADS = 32
 
 RANDOM_SEED = 3312
@@ -39,8 +39,13 @@ rng = np.random.default_rng(RANDOM_SEED)
 printer = pprint.PrettyPrinter(5, compact=True)
 
 
-def getPFailure(damages: Array):
-    return len(damages[jnp.isclose(damages, 1)]) / len(damages)
+def getPFailure(damages):
+    exceeding = damages[np.where(damages > 1)]
+    # print(f"SHAPES -> E: {exceeding.shape} D: {damages.shape}")
+    # print(f"EXCEEDING => {len(exceeding)}")
+    # print(f"TOTAL => {len(damages)}")
+    # print(f"damages => {damages[:500]}")
+    return exceeding.shape[0] / damages.shape[0]
 
 
 def getVarCoeff(p_failures, N_mcs):
@@ -192,52 +197,44 @@ def main(T: int, ndraws_wohler: int, delete_files: bool = False, debug: bool = F
             nbatches = 100
 
 
-        tot_damages = None
-        for i in range(nbatches):
-            # print(f"BATCH NUMBER : {i}")
+        for dmg_model in ["miner", "Aeran"]:
+            tot_damages = None
+            for i in range(nbatches):
+                # print(f"BATCH NUMBER : {i}")
 
-            try:
-                with open(
-                    LOAD_PATH / f"tot_damages_year{year}_batch_{i}_Aeran.npz", "rb"
-                ) as file:
-                    samples = np.load(file, allow_pickle=True)
-                    # damages_aeran = {key: jnp.array(val) for key, val in samples.items()}
-                    # damages_aeran = jnp.array(samples['arr_0'])
-                    damages_aeran = samples["arr_0"]
-                    if tot_damages is not None:
-                        tot_damages = np.hstack([tot_damages, damages_aeran])
-                    else:
-                        tot_damages = damages_aeran
+                try:
+                    with open(
+                        LOAD_PATH / f"tot_damages_year{year}_batch_{i}_{dmg_model}.npz", "rb"
+                    ) as file:
+                        samples = np.load(file, allow_pickle=True)
+                        damages_aeran = samples["arr_0"]
+                        if tot_damages is not None:
+                            tot_damages = np.hstack([tot_damages, damages_aeran])
+                        else:
+                            tot_damages = damages_aeran
 
-                vals[year]["pFailures"].append(getPFailure(damages_aeran))
-                N_mcs = len(damages_aeran)
-                if np.isclose(vals[year]["pFailures"][-1], 0):
-                    vals[year]["varCoeff"].append(0)
-                else:
-                    vals[year]["varCoeff"].append(
-                        getVarCoeff(vals[year]["pFailures"][-1], N_mcs)
-                    )
-            except Exception as e:
-                print(e)
-                raise e
+                    vals[year]["pFailures"].append(getPFailure(damages_aeran))
+                except Exception as e:
+                    print(e)
+                    raise e
 
-        fig, ax = plt.subplots(1, 2)
-        fig.set_size_inches(6.3, 6.3)
+            fig, ax = plt.subplots(1, 2)
+            fig.set_size_inches(6.3, 6.3)
 
-        p_failures = vals[year]["pFailures"]
-        var_coeff = vals[year]["varCoeff"]
-        ax[0].hist(p_failures, label="Probability of failure")
-        ax[1].hist(tot_damages, density=True, bins=100, label="Aeran Damages")
-        # print(f"DAMAGES MEAN => {tot_damages.mean()}")
-        # print(f"DAMAGES STD => {tot_damages.std()}")
-        # ax[0].set_xlabel("Probability of Failure")
+            p_failures = vals[year]["pFailures"]
+            # var_coeff = vals[year]["varCoeff"]
+            ax[0].hist(p_failures, label="Probabilidad de Falla")
+            ax[1].hist(tot_damages, density=True, bins=100, label=f"{dmg_model} Damages")
+            # print(f"DAMAGES MEAN => {tot_damages.mean()}")
+            # print(f"DAMAGES STD => {tot_damages.std()}")
+            # ax[0].set_xlabel("Probability of Failure")
 
-        ax[0].legend()
-        ax[1].legend()
-        plt.savefig(RESULTS_FOLDER / f"p_failure_year_{year}.png", dpi=600)
-        plt.close()
+            ax[0].legend()
+            ax[1].legend()
+            plt.savefig(RESULTS_FOLDER / f"p_failure_year_{year}.png", dpi=600)
+            plt.close()
 
-    plot_p_failure(vals)
+    # plot_p_failure(vals)
 
 
 if __name__ == "__main__":
